@@ -1,0 +1,17 @@
+{
+  "name": "auto-remediator",
+  "tools": [
+    {
+      "name": "read_finding",
+      "description": "Read a security finding.",
+      "kind": "read_sensitive",
+      "reversible": true
+    },
+    {
+      "name": "run_remediation",
+      "description": "Independently run remediation code; irreversible.",
+      "kind": "code_exec",
+      "reversible": false
+    }
+  ]
+}
