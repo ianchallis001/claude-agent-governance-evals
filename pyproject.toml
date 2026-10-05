@@ -33,6 +33,16 @@ packages = ["src/cage"]
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.lint]
+# An explicit, conventional rule set so `ruff check .` is reproducible across
+# ruff releases rather than tracking a shifting default. pyflakes (F), a
+# pycodestyle subset (E), import sorting (I), pyupgrade (UP), bugbear (B), and
+# ruff's own rules (RUF).
+select = ["E", "F", "I", "UP", "B", "RUF"]
+# E501 (line length) is advisory here; the 100-col limit above guides authoring
+# without failing CI on the odd long string.
+ignore = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
