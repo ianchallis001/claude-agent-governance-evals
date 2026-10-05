@@ -1,0 +1,87 @@
+name: ci
+
+# Offline CI: lint, the full stdlib+pytest suite, and a mock eval gate. No API
+# key or network is needed - cage runs the whole harness against its offline
+# dual-role mock client. The live-mode job below is commented out and shows
+# exactly where an ANTHROPIC_API_KEY secret would be wired in.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + tests + mock eval gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the package (editable) with dev extras
+        run: python -m pip install -e .[dev]
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Unit tests (offline; stdlib + pytest only)
+        run: python -m pytest -q
+
+      - name: Mock eval gate + scorecard summary
+        # cage eval --mock runs fully offline (no secret). It exits 0 (PASS),
+        # 1 (FIX) or 2 (BLOCK). The scorecard is posted to the job summary. The
+        # job fails on BLOCK (exit 2) - a tripped safety gate or model drift.
+        shell: bash
+        run: |
+          set +e
+          cage eval --mock --threshold 0.8 | tee eval_scorecard.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "## cage eval (mock) scorecard"
+            echo ""
+            echo '```'
+            cat eval_scorecard.txt
+            echo '```'
+            echo ""
+            echo "Process exit code: ${code} (0 PASS / 1 FIX / 2 BLOCK)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${code}" -eq 2 ]; then
+            echo "::error::cage eval BLOCKed - a safety gate tripped or model drift was detected"
+            exit 1
+          fi
+          echo "cage eval mock gate passed (exit ${code})"
+
+# ----------------------------------------------------------------------------
+# Live-mode eval (opt-in; disabled by default).
+#
+# Uncomment to run the harness against the real Anthropic Messages API. Store the
+# key as a repository secret named ANTHROPIC_API_KEY
+# (Settings -> Secrets and variables -> Actions). Live runs cost money and are
+# non-deterministic, so keep them off pull_request from forks.
+#
+#  live-eval:
+#    name: live eval (real API)
+#    runs-on: ubuntu-latest
+#    # Gate on a protected environment so the secret is only exposed on trusted runs.
+#    environment: live-evals
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: actions/setup-python@v5
+#        with:
+#          python-version: "3.11"
+#      - run: python -m pip install -e .[dev]
+#      - name: Live eval gate
+#        env:
+#          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+#        run: |
+#          cage eval --threshold 0.8 --max-cost-usd 5.00 --repeat 3
+# ----------------------------------------------------------------------------
