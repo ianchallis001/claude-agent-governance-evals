@@ -158,7 +158,7 @@ def regmap_payload() -> dict[str, Any]:
     """Return the regulatory-control map as a JSON-serialisable mapping.
 
     Covers the cumulative controls attaching at each governance intensity and the
-    controls anchored to each of the six evaluation dimensions.
+    controls anchored to each of the seven evaluation dimensions.
     """
     by_intensity = {
         intensity.name: [row.to_dict() for row in controls_for_intensity(intensity)]

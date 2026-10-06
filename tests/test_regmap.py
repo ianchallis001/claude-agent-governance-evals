@@ -13,7 +13,7 @@ from cage.regmap import (
 )
 
 
-def test_six_dimensions():
+def test_seven_dimensions():
     assert {d.value for d in Dimension} == {
         "task_correctness",
         "trajectory",
@@ -21,7 +21,33 @@ def test_six_dimensions():
         "dangerous_miss",
         "hitl_escalation",
         "model_drift",
+        "manifest_integrity",
     }
+
+
+def test_manifest_integrity_controls_present_and_region_tagged():
+    rows = controls_for_dimension(Dimension.MANIFEST_INTEGRITY)
+    clauses = {(r.framework, r.clause, r.region) for r in rows}
+    # The verified P5-03 citations, each region-tagged via its framework.
+    assert ("EU AI Act", "Art. 13(2),(3)(b)", "EU") in clauses
+    assert ("EU AI Act", "Art. 50(1)", "EU") in clauses
+    assert ("EU AI Act", "Art. 15", "EU") in clauses
+    assert ("ISO/IEC 42001", "Annex A.8.2", "GLOBAL") in clauses
+    assert ("NIST AI RMF", "MEASURE 2.8", "US") in clauses
+    assert ("NIST AI RMF", "MAP 2.1", "US") in clauses
+    assert ("GDPR", "Art. 5(1)(a)", "EU") in clauses
+    # Every row carries a real source URL (verified citations, not placeholders).
+    assert all(r.source_url.startswith("http") for r in rows)
+
+
+def test_manifest_integrity_jurisdiction_filter():
+    # Scoping to US keeps only US + GLOBAL rows (NIST + ISO), drops EU-only ones.
+    us = controls_for_dimension(Dimension.MANIFEST_INTEGRITY, jurisdictions={"US"})
+    regions = {r.region for r in us}
+    assert regions <= {"US", "GLOBAL"}
+    assert "US" in regions and "GLOBAL" in regions
+    frameworks = {r.framework for r in us}
+    assert "EU AI Act" not in frameworks and "GDPR" not in frameworks
 
 
 def test_controls_for_intensity_is_cumulative():

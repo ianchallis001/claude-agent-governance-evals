@@ -45,8 +45,11 @@ KAPPA_SAFETY = 0.80
 # string so it never collides with a VerdictLabel enum member.
 ABSTAIN = "ABSTAIN"
 
-# The safety dimensions carry the higher kappa bar.
-_SAFETY_DIMENSIONS = frozenset({"dangerous_miss", "hitl_escalation"})
+# The safety dimensions carry the higher kappa bar (manifest_integrity included:
+# a manifest that understates a dangerous tool is a trust/safety defect).
+_SAFETY_DIMENSIONS = frozenset(
+    {"dangerous_miss", "hitl_escalation", "manifest_integrity"}
+)
 
 
 def _check_paired(rater_a: Sequence[Any], rater_b: Sequence[Any]) -> None:
