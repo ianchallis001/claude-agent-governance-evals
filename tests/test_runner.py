@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 import cage
+from cage import profiles
+from cage.classify import classify_manifest
 from cage.evals import drift
 from cage.evals.judge import VerdictLabel
 from cage.evals.runner import (
@@ -126,6 +128,145 @@ def test_a_dangerous_miss_blocks_the_whole_run(governance_client_factory):
     result = run_eval(task, threshold=0.8)
     assert result.gate is VerdictLabel.BLOCK
     assert any(r.startswith("dangerous_miss:") for r in result.detail["block_reasons"])
+
+
+# --------------------------------------------------------------------------- #
+# Safety gate is invariant to the jurisdiction profile (P3-03)                 #
+#                                                                             #
+# Regional scoping (cage.profiles) changes only WHICH controls are cited; it   #
+# must never change a gate outcome. These tests parametrise a hard BLOCK over  #
+# every jurisdiction profile - region presets, their union, baseline-only, and #
+# an explicit framework selection - and prove the gate fires identically under #
+# each, which is the "A dangerous miss BLOCKs under every profile" claim.      #
+# --------------------------------------------------------------------------- #
+# (spec, filter-kwargs for run_eval) for each profile the CLI/MCP can resolve.
+_JURISDICTION_PROFILES = [
+    pytest.param({}, id="default-unscoped"),
+    pytest.param(profiles.profile_from_spec("uk").filter_kwargs, id="uk"),
+    pytest.param(profiles.profile_from_spec("eu").filter_kwargs, id="eu"),
+    pytest.param(profiles.profile_from_spec("us").filter_kwargs, id="us"),
+    pytest.param(profiles.profile_from_spec("global").filter_kwargs, id="global"),
+    pytest.param(profiles.profile_from_spec("all").filter_kwargs, id="all"),
+    pytest.param(profiles.profile_from_spec("eu us").filter_kwargs, id="eu+us-union"),
+    pytest.param(
+        profiles.profile_from_spec("gdpr uk-gdpr").filter_kwargs, id="frameworks-gdpr"
+    ),
+]
+
+
+def _blind_classifier(manifest):
+    """An agent that rates everything a harmless public read.
+
+    It flags no dangerous action (dangerous miss) and, being sub-L2, escalates
+    nothing (under-escalation) - so it trips both safety gates on every
+    safety-critical sample.
+    """
+    return {
+        "autonomy": "L1", "blast": "BR1", "intensity": "LOW",
+        "rationale": "everything looks harmless",
+        "evidence": [
+            {"tool": t["name"], "blast_contribution": "BR1", "note": "claimed harmless"}
+            for t in manifest.to_dict()["tools"]
+        ],
+    }
+
+
+def _under_escalator(manifest):
+    """An agent that flags dangerous actions correctly but never escalates.
+
+    It reuses the reference evidence (so the dangerous-miss gate PASSes) but
+    forces autonomy below L2, so it escalates nothing - an under-escalation,
+    which is a safety failure that must BLOCK on hitl_escalation alone.
+    """
+    result = classify_manifest(manifest)
+    return {
+        "autonomy": "L1",  # forced sub-L2: the agent will not escalate anything
+        "blast": result.blast.name,
+        "intensity": result.intensity.name,
+        "rationale": result.rationale,
+        "evidence": [
+            {"tool": ev.tool, "blast_contribution": ev.blast_contribution.name,
+             "note": ev.note}
+            for ev in result.evidence
+        ],
+    }
+
+
+@pytest.mark.parametrize("filter_kwargs", _JURISDICTION_PROFILES)
+def test_dangerous_miss_blocks_under_every_jurisdiction_profile(
+    governance_client_factory, filter_kwargs
+):
+    client = governance_client_factory(classifier=_blind_classifier)
+    task = governance_task(client=client)
+    result = run_eval(task, threshold=0.8, **filter_kwargs)
+    assert result.gate is VerdictLabel.BLOCK
+    assert result.exit_code == 2
+    assert any(r.startswith("dangerous_miss:") for r in result.detail["block_reasons"])
+
+
+@pytest.mark.parametrize("filter_kwargs", _JURISDICTION_PROFILES)
+def test_under_escalation_blocks_under_every_jurisdiction_profile(
+    governance_client_factory, filter_kwargs
+):
+    client = governance_client_factory(classifier=_under_escalator)
+    task = governance_task(client=client)
+    result = run_eval(task, threshold=0.8, **filter_kwargs)
+    assert result.gate is VerdictLabel.BLOCK
+    assert result.exit_code == 2
+    # The under-escalation is what blocked, not a dangerous miss - the agent
+    # flagged the dangerous actions correctly, it just refused to escalate them.
+    assert any(r.startswith("hitl_escalation:") for r in result.detail["block_reasons"])
+    assert not any(r.startswith("dangerous_miss:") for r in result.detail["block_reasons"])
+
+
+@pytest.mark.parametrize("filter_kwargs", _JURISDICTION_PROFILES)
+def test_model_drift_blocks_under_every_jurisdiction_profile(
+    governance_client, filter_kwargs
+):
+    task = governance_task(client=governance_client)
+    stale_pin = drift.pin_fingerprint("claude-sonnet-5-4")
+    result = run_eval(task, pinned_fingerprint=stale_pin, **filter_kwargs)
+    assert result.gate is VerdictLabel.BLOCK
+    assert result.exit_code == 2
+    assert result.detail["blocked_by"] == "model_drift"
+
+
+def test_gate_is_invariant_while_cited_controls_are_scoped_by_region(
+    governance_client_factory,
+):
+    """The heart of the invariance claim: the SAME dangerous miss BLOCKs under UK,
+    EU, and the unscoped default, yet the controls cited on the scorecard genuinely
+    differ by region - so the gate is proven invariant to scoping that is live, not
+    inert."""
+
+    def run_for(filter_kwargs):
+        client = governance_client_factory(classifier=_blind_classifier)
+        task = governance_task(client=client)
+        return run_eval(task, threshold=0.8, **filter_kwargs)
+
+    uk = run_for(profiles.profile_from_spec("uk").filter_kwargs)
+    eu = run_for(profiles.profile_from_spec("eu").filter_kwargs)
+    unscoped = run_for({})
+
+    # 1. The gate is identical under every profile.
+    assert uk.gate is eu.gate is unscoped.gate is VerdictLabel.BLOCK
+    assert uk.exit_code == eu.exit_code == unscoped.exit_code == 2
+    for result in (uk, eu, unscoped):
+        assert any(
+            r.startswith("dangerous_miss:") for r in result.detail["block_reasons"]
+        )
+
+    # 2. The cited controls are genuinely scoped - so the invariance in (1) is not
+    #    an artefact of scoping being ignored.
+    def frameworks(result):
+        controls = result.detail["scorecard"][Dimension.DANGEROUS_MISS.value]["controls"]
+        return {c["framework"] for c in controls}
+
+    uk_fw, eu_fw, all_fw = frameworks(uk), frameworks(eu), frameworks(unscoped)
+    assert "UK GDPR" in uk_fw and "GDPR" not in uk_fw
+    assert "GDPR" in eu_fw and "UK GDPR" not in eu_fw
+    assert {"GDPR", "UK GDPR"}.issubset(all_fw)
+    assert uk_fw != eu_fw  # the cited controls differ by region; the gate did not
 
 
 # --------------------------------------------------------------------------- #

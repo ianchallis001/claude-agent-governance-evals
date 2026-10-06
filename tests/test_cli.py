@@ -45,6 +45,17 @@ def test_eval_flags():
     assert args.repeat == 3
 
 
+def test_jurisdiction_flags_parse():
+    parser = cli.build_parser()
+    args = parser.parse_args(["eval", "--jurisdictions", "uk", "eu"])
+    assert args.jurisdictions == ["uk", "eu"]
+    # --regions is an accepted alias for --jurisdictions.
+    args = parser.parse_args(["classify", "m.json", "--regions", "us"])
+    assert args.jurisdictions == ["us"]
+    args = parser.parse_args(["eval", "--frameworks", "gdpr", "sr-11-7"])
+    assert args.frameworks == ["gdpr", "sr-11-7"]
+
+
 def test_main_no_command_prints_help_returns_zero(capsys):
     rc = cli.main([])
     assert rc == cli.EXIT_PASS
@@ -89,6 +100,28 @@ def test_classify_mock_prints_classification_and_regmap(tmp_path, capsys):
     # The regmap section is present and cites a framework.
     assert "Regulatory controls at HIGH" in out
     assert "EU AI Act" in out
+
+
+def test_classify_mock_jurisdiction_scopes_controls(tmp_path, capsys):
+    path = _write_manifest(tmp_path)
+    rc = cli.main(["classify", str(path), "--mock", "--jurisdictions", "us"])
+    assert rc == cli.EXIT_PASS
+    out = capsys.readouterr().out
+    # Header shows the active profile.
+    assert "Jurisdiction:" in out
+    assert "US" in out
+    # US + GLOBAL frameworks appear; EU/UK-only ones are scoped out.
+    assert "US SR 11-7" in out
+    assert "GDPR" not in out  # EU/UK GDPR scoped out under a US profile
+
+
+def test_eval_mock_jurisdiction_header(capsys):
+    rc = cli.main(["eval", "--mock", "--threshold", "0.8", "--jurisdictions", "uk"])
+    assert rc == cli.EXIT_PASS
+    out = capsys.readouterr().out
+    assert "jurisdiction:" in out
+    assert "gate: PASS" in out
+    out.encode("ascii")  # still ASCII-only
 
 
 # --------------------------------------------------------------------------- #

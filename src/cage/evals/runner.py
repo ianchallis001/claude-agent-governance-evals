@@ -136,6 +136,8 @@ def calibrate_judges(
 def build_scorecard(
     scores: list[Score],
     abstained_dims: dict[str, list[str]],
+    jurisdictions: set[str] | None = None,
+    frameworks: set[str] | None = None,
 ) -> dict[str, Any]:
     """Roll per-sample scores into a per-dimension scorecard.
 
@@ -144,6 +146,9 @@ def build_scorecard(
     the aggregated verdict (most severe non-abstained verdict), the counts, and
     the named regulatory controls the dimension is anchored to - so the scorecard
     is itself regulator-grounded (e.g. model_drift -> PRA SS1/23 2.4, SR 11-7 VII).
+
+    ``jurisdictions`` / ``frameworks`` scope the cited controls to a selection of
+    regimes; with neither, every framework's controls are listed (the default).
     """
     abstained_count = {d.value: 0 for d in Dimension}
     for dims in abstained_dims.values():
@@ -163,7 +168,10 @@ def build_scorecard(
             "verdict": worst.value,
             "n": len(dim_scores),
             "n_abstained": abstained_count.get(dim.value, 0),
-            "controls": [c.to_dict() for c in controls_for_dimension(dim)],
+            "controls": [
+                c.to_dict()
+                for c in controls_for_dimension(dim, jurisdictions, frameworks)
+            ],
         }
     return card
 
@@ -214,6 +222,9 @@ def run_eval(
     gating_allowed: dict[Dimension, bool] | None = None,
     noise_floor: float = 0.0,
     cost_per_sample: float = 0.0,
+    jurisdictions: set[str] | None = None,
+    frameworks: set[str] | None = None,
+    jurisdiction_label: str | None = None,
 ) -> RunResult:
     """Execute ``task`` end to end and return a :class:`RunResult`.
 
@@ -331,7 +342,11 @@ def run_eval(
     detail["noise_floor"] = {d.value: measured_floor.get(d, noise_floor) for d in Dimension}
     detail["block_reasons"] = block_reasons
     detail["aborted_on_budget"] = aborted
-    detail["scorecard"] = build_scorecard(all_scores, abstained_dims)
+    if jurisdiction_label is not None:
+        detail["jurisdiction"] = jurisdiction_label
+    detail["scorecard"] = build_scorecard(
+        all_scores, abstained_dims, jurisdictions, frameworks
+    )
 
     # --- step 5: aggregate to a single gate ------------------------------------
     if severity >= _SEVERITY[VerdictLabel.BLOCK]:
