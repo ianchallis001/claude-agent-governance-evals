@@ -20,6 +20,7 @@ test matrix.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -336,3 +337,63 @@ def governance_mock_client(
         raise MockError(f"governance mock received an unrecognised request: {sorted(names)}")
 
     return MockAnthropicClient(on_create=on_create)
+
+
+# --------------------------------------------------------------------------- #
+# Model-aware comparison mock                                                  #
+# --------------------------------------------------------------------------- #
+# The model-comparison matrix (``cage compare``) runs the same eval across a set
+# of candidate models. Offline, every model would otherwise score identically (a
+# deterministic reference classifier graded by a PASS-ing judge), so the matrix
+# would show no deltas. To exercise the matrix - and to keep the deltas
+# reproducible in tests - the comparison mock perturbs the judge's *quality*
+# score by a fixed amount derived from the model id. It is a HARNESS fixture, not
+# a claim about any model's real quality: the perturbation is clearly labelled
+# "(mock)" wherever it surfaces, and the safety gates (dangerous-miss, HITL,
+# manifest-integrity, drift) are left untouched, so a mock comparison never
+# fabricates a safety outcome.
+
+
+def model_quality_perturbation(
+    model_id: str, low: float = 0.80, high: float = 0.98
+) -> float:
+    """A deterministic per-model quality score in ``[low, high]``.
+
+    Derived from a SHA-256 over the model id (first four bytes), so it is stable
+    across runs and effectively collision-free across distinct ids, while varying
+    enough between models to produce non-trivial, reproducible matrix deltas. The
+    range stays comfortably above a typical gate boundary (0.5) so the mock does
+    not spuriously trip the noise-floor abstain rule.
+    """
+    if not 0.0 <= low <= high <= 1.0:
+        raise ValueError(f"require 0 <= low <= high <= 1, got low={low}, high={high}")
+    digest = hashlib.sha256(model_id.encode("utf-8")).digest()
+    frac = int.from_bytes(digest[:4], "big") / 0xFFFFFFFF
+    return round(low + (high - low) * frac, 4)
+
+
+def comparison_mock_client(
+    model_id: str,
+    *,
+    classifier: Callable[[Any], dict[str, Any]] | None = None,
+) -> MockAnthropicClient:
+    """Build a dual-role mock whose judge score varies deterministically by model.
+
+    Like :func:`governance_mock_client`, the agent role replays the reference
+    classifier (so the classification - and therefore every deterministic safety
+    gate - is identical across models). The judge role returns a confident PASS
+    whose numeric ``score`` is :func:`model_quality_perturbation` of ``model_id``,
+    giving the comparison matrix reproducible, non-trivial deltas offline.
+    """
+    score = model_quality_perturbation(model_id)
+
+    def _judge(_kwargs: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "verdict": "PASS",
+            "score": score,
+            "cited_reason": f"deterministic mock quality score for {model_id}",
+            "confidence": 0.9,
+            "unknown": False,
+        }
+
+    return governance_mock_client(classifier=classifier, judge_verdict=_judge)
