@@ -48,6 +48,12 @@ behaviour it adds is covered by a new or updated test.
 | [x] | P3-01 | `regmap.py`, `classify.py` | Framework->region map; GDPR/UK-GDPR/NIST rows; jurisdiction/framework filter |
 | [x] | P3-02 | `profiles.py`, `cli.py`, `mcp_server.py` | Region presets + framework slugs; precedence CLI>env>config>default; `--jurisdictions`/`--frameworks`; MCP field |
 
+## Phase 5 - Dimension extensions
+
+| State | Ticket | Module(s) | Deliverable |
+|---|---|---|---|
+| [x] | P5-03 | `regmap.py`, `evals/{judge,scorer,safety,runner}.py`, `data/*.json` | Seventh dimension `manifest_integrity`: detect a tool whose description is inconsistent with its declared kind (understate -> BLOCK, overstate -> FIX, honest -> PASS) |
+
 ---
 
 ## Dependency order
@@ -101,4 +107,14 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   shows where `ANTHROPIC_API_KEY` would be wired as a secret. An explicit
   `[tool.ruff.lint]` rule set (E/F/I/UP/B/RUF) pins lint reproducibly.
   `python -m pytest`: 219 passed. `cage eval --mock`: PASS (exit 0).
+- **2026-10-06** - Seventh dimension landed (P5-03): `manifest_integrity` flags a
+  tool whose natural-language description is inconsistent with its declared kind.
+  `safety.manifest_integrity_gate` + an isolated judge grade each tool; an
+  understating manifest (benign wording hiding a destructive / egress / code_exec
+  kind) is a safety-class BLOCK that cannot be outvoted (like a dangerous miss),
+  an overstating one is a FIX penalty, honest PASSes. Region-tagged control rows
+  added to `regmap.py` (EU AI Act Art. 13/50/15, ISO/IEC 42001 A.8.2, NIST AI RMF
+  MEASURE 2.8 / MAP 2.1, GDPR Art. 5(1)(a)); golden gains two honest exemplars
+  (now 42), calibration gains an understate + overstate slice (now 12). `python
+  -m pytest`: 331 passed. `cage eval --mock`: PASS (exit 0).
 - Remaining Phase 1: P1-01 (`manifest.py` hardening).
