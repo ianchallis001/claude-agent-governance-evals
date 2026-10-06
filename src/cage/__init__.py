@@ -27,7 +27,7 @@ from cage.classify import (
     classify_manifest,
     intensity_for,
 )
-from cage.manifest import AgentManifest, Tool, ToolKind, load_manifest
+from cage.manifest import AgentManifest, ManifestError, Tool, ToolKind, load_manifest
 from cage.models import (
     AGENT_MODEL,
     ANTHROPIC_VERSION,
@@ -57,6 +57,7 @@ __all__ = [
     # regmap
     "Dimension",
     "GovernanceIntensity",
+    "ManifestError",
     "Tool",
     "ToolEvidence",
     # manifest
