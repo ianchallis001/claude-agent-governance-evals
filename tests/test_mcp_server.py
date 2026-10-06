@@ -66,6 +66,30 @@ def test_classify_payload_deterministic_and_grounded():
     assert result["model_pin"]["agent_model"]
 
 
+def test_classify_payload_jurisdictions_scope_controls():
+    tools = [
+        {"name": "read_news", "kind": "read_public", "description": "read"},
+        {"name": "wipe_db", "kind": "destructive", "reversible": False, "description": "wipe"},
+    ]
+    # Default: all frameworks, 'all' jurisdiction marker.
+    full = mcp_server.classify_payload("Ops", tools)
+    assert full["regulatory_controls"]["jurisdictions"] == "all"
+    full_fw = {c["framework"] for c in full["regulatory_controls"]["intensity_controls"]}
+    assert {"GDPR", "UK GDPR", "US SR 11-7"} <= full_fw
+
+    # Scoped to US: only US + GLOBAL frameworks survive.
+    us = mcp_server.classify_payload("Ops", tools, jurisdictions=["US"])
+    regions = {c["region"] for c in us["regulatory_controls"]["intensity_controls"]}
+    assert regions <= {"US", "GLOBAL"}
+    us_fw = {c["framework"] for c in us["regulatory_controls"]["intensity_controls"]}
+    assert "US SR 11-7" in us_fw
+    assert "GDPR" not in us_fw and "UK GDPR" not in us_fw
+    # Region strings are normalised, so lowercase works too.
+    assert mcp_server.classify_payload("Ops", tools, jurisdictions=["us"])[
+        "regulatory_controls"
+    ]["jurisdictions"] == us["regulatory_controls"]["jurisdictions"]
+
+
 def test_classify_payload_rejects_bad_kind():
     with pytest.raises(ValueError):
         mcp_server.classify_payload("Bad", [{"name": "t", "kind": "not_a_kind"}])
@@ -203,6 +227,33 @@ def test_tool_classifies_manifest():
             assert cls["blast"] == "BR3"  # reversible write dominates reads
             assert cls["intensity"] in {"LOW", "MODERATE", "HIGH", "CRITICAL"}
             assert payload["regulatory_controls"]["intensity"] == cls["intensity"]
+
+    _run(body)
+
+
+def test_tool_jurisdictions_field_optional_and_honoured():
+    async def body():
+        async with _Harness() as h:
+            # The jurisdictions field is optional (not required by the schema).
+            schema = next(
+                t for t in (await h.client.list_tools()).tools
+                if t.name == "classify_manifest"
+            ).input_schema
+            assert set(schema["required"]) == {"name", "tools"}
+            assert "jurisdictions" in schema["properties"]
+
+            # Honoured when present: US scope drops EU/UK-only frameworks.
+            res = await h.client.call_tool(
+                "classify_manifest",
+                {"name": "Poster", "tools": SAMPLE_TOOLS, "jurisdictions": ["US"]},
+            )
+            assert res.is_error is False
+            payload = json.loads(res.content[0].text)
+            dim_controls = payload["regulatory_controls"]["dimension_controls"]
+            regions = {
+                c["region"] for rows in dim_controls.values() for c in rows
+            }
+            assert regions <= {"US", "GLOBAL"}
 
     _run(body)
 

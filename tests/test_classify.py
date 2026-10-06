@@ -194,7 +194,9 @@ def test_to_dict_serialises_controls(sample_manifest):
     d = classify_manifest(sample_manifest).to_dict()
     assert d["controls"], "controls must serialise non-empty for CRITICAL"
     first = d["controls"][0]
-    assert set(first) == {"framework", "clause", "title", "requirement"}
+    assert set(first) == {
+        "framework", "region", "clause", "title", "requirement", "source_url"
+    }
 
 
 def test_rationale_mentions_axes(sample_manifest):
