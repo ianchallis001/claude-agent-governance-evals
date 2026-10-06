@@ -46,7 +46,7 @@ def test_regmap_payload_covers_intensities_and_dimensions():
     assert set(payload["by_intensity"]) == {"LOW", "MODERATE", "HIGH", "CRITICAL"}
     # Cumulative: CRITICAL carries at least as many controls as LOW.
     assert len(payload["by_intensity"]["CRITICAL"]) >= len(payload["by_intensity"]["LOW"])
-    assert len(payload["by_dimension"]) == 6
+    assert len(payload["by_dimension"]) == 7
     for rows in payload["by_dimension"].values():
         assert rows and all("framework" in r and "clause" in r for r in rows)
 

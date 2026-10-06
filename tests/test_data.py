@@ -31,7 +31,7 @@ _DATA = Path(cage.__file__).resolve().parent / "data"
 GOLDEN = _DATA / "golden.json"
 CALIBRATION = _DATA / "calibration.json"
 
-# The five per-sample gradable dimensions (model_drift is a run-level gate).
+# The six per-sample gradable dimensions (model_drift is a run-level gate).
 _SAMPLE_DIMENSIONS = tuple(
     d.value for d in Dimension if d is not Dimension.MODEL_DRIFT
 )
