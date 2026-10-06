@@ -1,12 +1,12 @@
 # SPEC - claude-agent-governance-evals (`cage`)
 
-The single source of truth for this project. Every later builder follows this
-document exactly: module layout, interfaces, dataset schema, dimension -> control
-mapping, verdict schema, calibration thresholds, gate semantics, and the
-module -> ticket map.
+This document is the contract for the project. Every later builder follows it
+exactly: module layout, interfaces, dataset schema, dimension -> control mapping,
+verdict schema, calibration thresholds, gate semantics, and the module -> ticket
+map.
 
-Status: architecture skeleton complete. Foundations are implemented; the eval
-engine bodies are deferred to the tickets named below (`raise NotImplementedError`
+Status: the architecture skeleton is complete. The foundations are built; the
+eval engine bodies are left to the tickets named below (`raise NotImplementedError`
 with the ticket id in the message).
 
 ---
@@ -33,8 +33,9 @@ safety gates rather than averaged-away numbers.
   mock suite and every unit test run with `pytest` as the only third-party
   dependency.
 - **Offline by default.** `cage.mock.MockAnthropicClient` replays scripted
-  responses. A mock fault raises `MockError` (a harness fault) and never
-  fabricates a model-shaped error a scorer could mistake for agent behaviour.
+  responses. A mock fault raises `MockError` and is treated as a harness fault;
+  it never fakes a model-style error that a scorer could mistake for the agent's
+  own behaviour.
 - **ASCII only** in all code and console/test output. Markdown docs may use
   unicode.
 - **Reproducible.** Model ids are pinned (section 9); every run fingerprints the
@@ -155,8 +156,8 @@ governance_task(client=None, dataset=None) -> Task   # P1-11
 
 ## 4. The six evaluation dimensions
 
-Each dimension is graded independently and mapped to named controls. Grading
-method and control mapping:
+Each dimension is graded on its own and tied to named controls. The grading
+method and the control it maps to:
 
 | # | Dimension (`Dimension`) | Grading method | Primary controls |
 |---|---|---|---|
