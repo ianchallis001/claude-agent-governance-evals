@@ -52,7 +52,10 @@ src/cage/
   classify.py        AutonomyLevel / BlastRadius / GovernanceIntensity enums,
                      the two-axis MATRIX, intensity_for(), Classification,
                      ToolEvidence, classify_manifest().
-  regmap.py          Dimension enum + ControlRow + intensity/dimension -> controls.
+  regmap.py          Dimension enum + ControlRow + intensity/dimension -> controls;
+                     FRAMEWORK_REGIONS map + optional jurisdiction/framework filter.
+  profiles.py        Regional control profiles: region presets + framework slugs,
+                     resolved by precedence (CLI > env > config file > default).
   mock.py            Offline scripted/replay Anthropic client + response builders.
   agent.py           ClassifierAgent on the raw Messages API (lazy anthropic,
                      injectable client, tool_use/tool_result loop).
@@ -78,8 +81,9 @@ docs/adr/            Architecture decision records.
 The shared `Dimension` enum lives in `cage.regmap` (imported by `judge`, `scorer`,
 and the regulatory mapping) to keep the import graph acyclic:
 `models` and `manifest` are leaves; `classify` -> `manifest`; `regmap` ->
-`classify`; the `evals` modules depend on `regmap`/`classify`/`models`; `agent`
-and `cli` sit on top; `mcp_server` is independent of the engine.
+`classify`; `profiles` -> `regmap`; the `evals` modules depend on
+`regmap`/`classify`/`models`; `agent` and `cli` sit on top (`cli` also -> `profiles`);
+`mcp_server` is independent of the engine.
 
 ---
 
@@ -165,7 +169,42 @@ method and control mapping:
 
 The authoritative mapping in code is `cage.regmap.controls_for_dimension()`;
 `controls_for_intensity()` adds the cumulative controls that attach to the
-resolved governance intensity.
+resolved governance intensity. Both accessors span seven frameworks across four
+regions (see section 4a) and take an optional `jurisdictions` (region set) or
+`frameworks` (framework-name set) filter; with neither, every framework's
+controls are returned.
+
+### 4a. Regional control profiles
+
+Each framework carries a single jurisdiction, held once in
+`cage.regmap.FRAMEWORK_REGIONS` (a `ControlRow`'s `region` is *derived* from its
+framework, not stored twice):
+
+| Framework | Region | | Framework | Region |
+|-----------|--------|-|-----------|--------|
+| EU AI Act | `EU` | | ISO/IEC 42001 | `GLOBAL` |
+| GDPR | `EU` | | NIST AI RMF | `US` |
+| UK GDPR | `UK` | | US SR 11-7 | `US` |
+| PRA SS1/23 | `UK` | | | |
+
+`cage.profiles` resolves a selection into a `JurisdictionProfile(regions,
+frameworks, source, label)`:
+
+- **Region presets** (`--jurisdictions` / `--regions`), combinable by union:
+  `uk` -> `{UK, GLOBAL}`, `eu` -> `{EU, GLOBAL}`, `us` -> `{US, GLOBAL}`,
+  `all` -> all four, `global` -> `{GLOBAL}`. Under a region filter, `GLOBAL`
+  (ISO/IEC 42001) is always retained as a baseline.
+- **Explicit frameworks** (`--frameworks`) by stable slug (`eu-ai-act`, `gdpr`,
+  `uk-gdpr`, `iso-42001`, `pra-ss1-23`, `sr-11-7`, `nist-ai-rmf`): exact - the
+  GLOBAL baseline is included only if `iso-42001` is named. Overrides region
+  selection.
+- **Precedence:** CLI argument > `CAGE_JURISDICTIONS` env var > `[tool.cage]` in
+  `cage.toml` or `pyproject.toml` (parsed with stdlib `tomllib`) > default (all).
+
+Scoping changes only the **cited controls** listed against a classification or a
+scorecard; it never changes a gate outcome. The CLI (`classify`, `eval`) and the
+MCP `classify_manifest` tool (optional `jurisdictions` array) honour it; the
+active profile is shown in the output header.
 
 ---
 
@@ -367,6 +406,8 @@ are delivered now; each ticket fills the engine body that currently raises
 | **P2-01** | `data/golden.json` | Author the golden dataset to the section-7 schema. | >= N labelled samples spanning every intensity and tool kind. |
 | **P2-02** | `data/calibration.json` | Author human-labelled calibration pairs; run calibration. | Kappa computed per dimension; thresholds met or documented gaps. |
 | **P2-03** | `mcp_server.py` | `build_server()` + `main()`: expose the classifier as an MCP tool, with matrix/regmap resources and a review prompt (lazy `mcp`). | MCP server starts over stdio and serves `classify_manifest`. |
+| **P3-01** | `regmap.py`, `classify.py` | `FRAMEWORK_REGIONS` + derived `ControlRow.region`; GDPR / UK GDPR / NIST AI RMF control rows; optional `jurisdictions`/`frameworks` filter on both accessors and `classify_manifest`. | Each dimension + intensity returns reviewed, citable rows across 7 frameworks; filter emits only selected regions, GLOBAL always kept. |
+| **P3-02** | `profiles.py`, `cli.py`, `mcp_server.py` | Region presets + framework slugs resolved by precedence (CLI > env > config > default); `--jurisdictions`/`--regions`/`--frameworks` on `classify`/`eval`; MCP `jurisdictions` tool field; active profile in the header. | Presets union; precedence honoured; MCP field honoured; scoping never changes a gate. |
 
 ---
 
@@ -379,6 +420,9 @@ python -c "import sys; sys.path.insert(0,'src'); import cage"   # import check
 cage --version                   # after `pip install -e .`
 cage classify manifest.json --mock
 cage eval --mock --threshold 0.8 --repeat 3
+cage eval --mock --jurisdictions uk          # scope cited controls to UK + GLOBAL
+cage eval --mock --jurisdictions eu us        # union: data passes through EU + US
+cage classify manifest.json --mock --frameworks gdpr uk-gdpr
 ```
 
 Exit codes: `0` PASS, `1` FIX, `2` BLOCK.
