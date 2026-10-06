@@ -26,6 +26,7 @@ inside the function body, which keeps the import graph acyclic.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any
@@ -265,7 +266,11 @@ def _infer_autonomy(manifest: AgentManifest) -> tuple[AutonomyLevel, str]:
     return level, note
 
 
-def classify_manifest(manifest: AgentManifest) -> Classification:
+def classify_manifest(
+    manifest: AgentManifest,
+    jurisdictions: Iterable[str] | None = None,
+    frameworks: Iterable[str] | None = None,
+) -> Classification:
     """Classify an agent manifest onto the two axes, with per-tool evidence.
 
     Derives the overall blast radius as the worst case across the manifest's
@@ -274,6 +279,11 @@ def classify_manifest(manifest: AgentManifest) -> Classification:
     bounded by the agent's capability class, resolves the intensity via
     :func:`intensity_for`, and attaches the cumulative regulatory controls for
     that intensity. Records a :class:`ToolEvidence` row per tool.
+
+    ``jurisdictions`` (a set/list of region strings) or ``frameworks`` (framework
+    names) scope the attached controls to a selection of regimes; with neither
+    (the default) every framework's controls attach. Scoping changes only which
+    controls are cited, never the resolved axes or intensity.
 
     Ticket: P1-02.
     """
@@ -302,7 +312,7 @@ def classify_manifest(manifest: AgentManifest) -> Classification:
 
     autonomy, autonomy_note = _infer_autonomy(manifest)
     intensity = intensity_for(autonomy, blast)
-    controls = controls_for_intensity(intensity)
+    controls = controls_for_intensity(intensity, jurisdictions, frameworks)
 
     rationale = (
         f"Autonomy {autonomy.name} ({autonomy_note}). "
