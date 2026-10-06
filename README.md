@@ -26,7 +26,7 @@ ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. And the whole suite runs
 regulator-shaped scorecard with no API key and no network.
 
 > **Status (honest).** Phase 1 - the harness and the CLI - is finished and
-> tested: 240 tests, all offline. The datasets (`data/golden.json`,
+> tested: 272 tests, all offline. The datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are built and working. One Phase 1
 > ticket is still open: strict-mode hardening of `manifest.py` (P1-01).
 > [BOARD.md](BOARD.md) has the live ticket state and [SPEC.md](SPEC.md) is the
@@ -54,7 +54,7 @@ cage classify examples/auto-remediator.json --mock   # two-axis placement + cont
 cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
 cage eval --mock --threshold 1.1                 # impossible bar -> FIX (exit 1), never a false PASS
-python -m pytest                                 # 240 tests, stdlib + pytest only, fully offline
+python -m pytest                                 # 272 tests, stdlib + pytest only, fully offline
 ```
 
 The runtime is **Python standard library only**. The `anthropic` SDK is imported
@@ -79,9 +79,11 @@ needs:
 
 Here is real output from `cage classify examples/auto-remediator.json --mock`: an
 agent that can *independently run irreversible remediation code* comes out at
-`L4 / BR5 -> CRITICAL`. It shows the evidence tool by tool, and attaches eight
-controls, up to and including EU AI Act Art. 14(4) (a real-time human stop) and
-PRA SS1/23 Principle 5.
+`L4 / BR5 -> CRITICAL`. It shows the evidence tool by tool, and attaches sixteen
+controls across all jurisdictions, up to and including EU AI Act Art. 14(4) (a
+real-time human stop) and PRA SS1/23 Principle 5. Scope it to one region - say
+`--jurisdictions uk` - and that narrows to the seven UK + GLOBAL controls (see
+[Regional control profiles](#regional-control-profiles) below).
 
 ---
 
@@ -147,9 +149,13 @@ on its own, apart from the engine.
 ## What each dimension grades, and the control it maps to
 
 Each of the six dimensions is graded on its own and tied to named, citable
-controls across four regimes. The table is the intent; the live mapping in code
-is `cage.regmap.controls_for_dimension()`, and `controls_for_intensity()` adds
-the extra controls that attach as the governance intensity rises.
+controls. The table below shows the four original regimes; the mapping now also
+spans the regional frameworks (GDPR, UK GDPR and NIST AI RMF), so every row can
+be scoped to the jurisdictions your data passes through - see
+[Regional control profiles](#regional-control-profiles). The table is the intent;
+the live mapping in code is `cage.regmap.controls_for_dimension()`, and
+`controls_for_intensity()` adds the extra controls that attach as the governance
+intensity rises.
 
 | # | Dimension | How it is graded | EU AI Act | ISO/IEC 42001 | PRA SS1/23 | US SR 11-7 |
 |---|-----------|------------------|-----------|---------------|------------|------------|
@@ -165,6 +171,89 @@ ISO 42001 A.5.2 impact assessment; `MODERATE` adds EU AI Act Art. 15 metrics and
 A.8.3 logging; `HIGH` adds Art. 14 oversight, PRA SS1/23 Principle 2 and SR 11-7
 Sec. V validation; `CRITICAL` adds Art. 14(4) real-time stop authority and PRA
 SS1/23 Principle 5 mitigants.
+
+---
+
+## Regional control profiles
+
+Which controls actually apply depends on where an organisation operates and where
+its data passes through. `cage` recognises seven frameworks, each in a single
+clean jurisdiction, and lets you **scope the cited controls to the regions you
+care about**. This changes *which controls are listed* against a classification
+or a scorecard - it **never changes a gate outcome**. A dangerous miss BLOCKs
+under every profile; the region selector only decides which named clauses you are
+shown to satisfy.
+
+### The jurisdiction map
+
+| Framework | Region | Notes |
+|-----------|--------|-------|
+| EU AI Act | `EU` | |
+| GDPR | `EU` | Reg. (EU) 2016/679 |
+| UK GDPR | `UK` | Retained Reg. 2016/679 as amended by the DPA 2018; mirrors EU article numbers |
+| ISO/IEC 42001 | `GLOBAL` | AI management system - applies regardless of region |
+| NIST AI RMF | `US` | GOVERN / MAP / MEASURE / MANAGE core functions |
+| PRA SS1/23 | `UK` | |
+| US SR 11-7 | `US` | |
+
+`GLOBAL` (ISO/IEC 42001) is a baseline that is always included under a regional
+selection. UK GDPR deliberately mirrors EU GDPR's article numbering (same Art. 5,
+22, 25, 32, 35); the divergence that matters for a *data-residency* control is the
+international-transfer route - EU GDPR Chapter V relies on adequacy and the EU
+SCCs, UK GDPR on the ICO's IDTA / UK Addendum.
+
+### Select by region
+
+`--jurisdictions` (alias `--regions`) takes one or more presets, which union:
+
+| Preset | Regions it resolves to |
+|--------|------------------------|
+| `uk` | `UK`, `GLOBAL` |
+| `eu` | `EU`, `GLOBAL` |
+| `us` | `US`, `GLOBAL` |
+| `all` | `EU`, `UK`, `US`, `GLOBAL` (the default) |
+| `global` | `GLOBAL` only |
+
+```bash
+cage classify examples/auto-remediator.json --mock --jurisdictions uk
+cage eval --mock --jurisdictions us
+cage eval --mock --jurisdictions eu us      # "data passes through EU + US" -> {EU, US, GLOBAL}
+```
+
+The last example is the common case for a cross-border flow: name every region the
+data touches and the controls union across them (plus the GLOBAL baseline). The
+active profile is printed in the output header, e.g.
+`jurisdiction: eu, us (regions: EU, GLOBAL, US; source: cli)`.
+
+### Select by framework
+
+When you want exactly named frameworks rather than whole regions, use
+`--frameworks` with the stable slugs (`eu-ai-act`, `gdpr`, `uk-gdpr`,
+`iso-42001`, `pra-ss1-23`, `sr-11-7`, `nist-ai-rmf`). This is exact - the GLOBAL
+baseline is included only if you name `iso-42001` - and it overrides
+`--jurisdictions`:
+
+```bash
+cage eval --mock --frameworks gdpr uk-gdpr      # just the two data-protection regimes
+```
+
+### Where the selection comes from
+
+The active profile is resolved in this precedence order (first one set wins):
+
+1. the CLI argument (`--frameworks` beats `--jurisdictions`);
+2. the `CAGE_JURISDICTIONS` environment variable (e.g. `CAGE_JURISDICTIONS=uk,eu`);
+3. a config file - `[tool.cage]` in `cage.toml` or `pyproject.toml`:
+
+   ```toml
+   [tool.cage]
+   jurisdictions = ["uk"]      # or: frameworks = ["gdpr", "uk-gdpr"]
+   ```
+
+4. the default - all jurisdictions.
+
+The same selection is honoured by the MCP `classify_manifest` tool through an
+optional `jurisdictions` field (an array of region strings); omit it for all.
 
 ---
 
@@ -299,7 +388,7 @@ protocol-level check that did run.
 ## Claims backed by tests
 
 Every headline claim below is proved by a named test on disk. Run any one with
-`python -m pytest -k <test_name>`, or all 240 with `python -m pytest`.
+`python -m pytest -k <test_name>`, or all 272 with `python -m pytest`.
 
 | Claim | Proven by (test) | File |
 |-------|------------------|------|
@@ -323,6 +412,7 @@ Every headline claim below is proved by a named test on disk. Run any one with
 | The **budget guard aborts** before exceeding `--max-cost-usd` | `test_budget_guard_aborts_before_exceeding` | `tests/test_runner.py` |
 | `mcp_server` **imports without `mcp` installed** (lazy import) | `test_module_imports_without_mcp` | `tests/test_mcp_server.py` |
 | CLI output is **ASCII-only**; `eval --mock` exits 0 on PASS and 1 on FIX | `test_subprocess_output_is_ascii`, `test_subprocess_eval_mock_exits_zero`, `test_subprocess_eval_mock_fix_exits_one` | `tests/test_cli.py` |
+| **Regional profiles** scope the cited controls (region presets union; GLOBAL always kept; precedence CLI > env > config) | `test_jurisdiction_filter_emits_only_selected_regions_plus_global`, `test_presets_are_combinable_by_union`, `test_config_file_pyproject` | `tests/test_regmap.py`, `tests/test_profiles.py` |
 
 ---
 
@@ -480,7 +570,8 @@ steps to get from here to a defensible evaluation set.
 ```
 src/cage/            # the harness (stdlib-only runtime)
   classify.py          two-axis matrix + classify_manifest
-  regmap.py            Dimension enum + control catalogue (4 frameworks)
+  regmap.py            Dimension enum + control catalogue (7 frameworks, 4 regions)
+  profiles.py          regional control profiles (region/framework selection)
   agent.py             ClassifierAgent on the Messages API (lazy anthropic)
   mock.py              offline scripted dual-role client (agent + judge)
   evals/               judge, scorer, calibration, safety, drift, task, runner
@@ -488,7 +579,7 @@ src/cage/            # the harness (stdlib-only runtime)
   gateway_stub.py      reference enforcement proxy (ADR-0002)
   cli.py               the `cage` CLI
   data/                golden.json + calibration.json
-tests/               # 240 tests, one module per src module
+tests/               # 272 tests, one module per src module
 docs/adr/            # architecture decision records (ADR-0001..0003)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract

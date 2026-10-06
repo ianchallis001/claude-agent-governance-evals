@@ -41,6 +41,13 @@ behaviour it adds is covered by a new or updated test.
 | [ ] | P2-02 | `data/calibration.json` | Author calibration pairs + run calibration |
 | [ ] | P2-03 | `server.py` | MCP server exposing the classifier |
 
+## Phase 3 - Regional control profiles
+
+| State | Ticket | Module(s) | Deliverable |
+|---|---|---|---|
+| [x] | P3-01 | `regmap.py`, `classify.py` | Framework->region map; GDPR/UK-GDPR/NIST rows; jurisdiction/framework filter |
+| [x] | P3-02 | `profiles.py`, `cli.py`, `mcp_server.py` | Region presets + framework slugs; precedence CLI>env>config>default; `--jurisdictions`/`--frameworks`; MCP field |
+
 ---
 
 ## Dependency order
