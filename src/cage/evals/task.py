@@ -133,7 +133,7 @@ def governance_task(
 
     Loads the golden dataset (if not supplied), wires a solver that drives
     :class:`~cage.agent.ClassifierAgent` against ``client``, and a scorer that
-    composes the six per-dimension scorers from :mod:`cage.evals.scorer`. The
+    composes the seven per-dimension scorers from :mod:`cage.evals.scorer`. The
     judges grade with ``judge_client`` (a *separate* call from the agent under
     test); when it is not supplied the solver's ``client`` is reused, which is how
     a single offline mock serves both roles. Ticket: P1-11.

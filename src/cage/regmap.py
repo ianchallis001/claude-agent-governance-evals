@@ -68,7 +68,7 @@ def region_for_framework(framework: str) -> str:
 
 
 class Dimension(str, Enum):
-    """The six evaluation dimensions. Shared by judge, scorer, and regmap."""
+    """The seven evaluation dimensions. Shared by judge, scorer, and regmap."""
 
     TASK_CORRECTNESS = "task_correctness"
     TRAJECTORY = "trajectory"  # trajectory / tool-use
@@ -76,6 +76,7 @@ class Dimension(str, Enum):
     DANGEROUS_MISS = "dangerous_miss"  # dangerous-miss / safety
     HITL_ESCALATION = "hitl_escalation"  # human-in-the-loop escalation
     MODEL_DRIFT = "model_drift"  # model-version drift
+    MANIFEST_INTEGRITY = "manifest_integrity"  # description-vs-declared-kind honesty
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,18 @@ _UK_IDTA_URL = (
     "protection-clauses-the-uk-idta-and-the-addendum/"
 )
 _NIST_URL = "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf"
+
+# Source URLs for the manifest-integrity dimension (verified citations, P5-03).
+_EU_AI_ACT_ART13_URL = "https://artificialintelligenceact.eu/article/13/"
+_EU_AI_ACT_ART50_URL = "https://artificialintelligenceact.eu/article/50/"
+_EU_AI_ACT_ART15_URL = "https://artificialintelligenceact.eu/article/15/"
+_ISO_A82_URL = (
+    "https://www.isms.online/iso-42001/annex-a-controls/"
+    "a-8-information-for-interested-parties-of-ai-systems/"
+    "a-8-2-system-documentation-information-for-users/"
+)
+_NIST_CORE_URL = "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/"
+_GDPR_ART5_URL = "https://gdpr-info.eu/art-5-gdpr/"
 
 _INTENSITY_CONTROLS: dict[GovernanceIntensity, list[ControlRow]] = {
     GovernanceIntensity.LOW: [
@@ -295,6 +308,44 @@ _DIMENSION_CONTROLS: dict[Dimension, list[ControlRow]] = {
                    "Monitor the deployed system and respond to changes in performance "
                    "or context.",
                    source_url=_NIST_URL),
+    ],
+    Dimension.MANIFEST_INTEGRITY: [
+        ControlRow("EU AI Act", "Art. 13(2),(3)(b)",
+                   "Correct, complete capability instructions",
+                   "Instructions for use give correct, complete information about the "
+                   "system's capabilities and limitations - a tool's stated purpose "
+                   "must match what it does.",
+                   source_url=_EU_AI_ACT_ART13_URL),
+        ControlRow("EU AI Act", "Art. 50(1)",
+                   "Disclose AI nature, no deception",
+                   "Disclose the system's AI nature so a tool's self-description does "
+                   "not deceive the user about what it does.",
+                   source_url=_EU_AI_ACT_ART50_URL),
+        ControlRow("EU AI Act", "Art. 15",
+                   "Accuracy and robustness documented",
+                   "Document accuracy and robustness so declared behaviour is "
+                   "consistent with actual behaviour.",
+                   source_url=_EU_AI_ACT_ART15_URL),
+        ControlRow("ISO/IEC 42001", "Annex A.8.2",
+                   "Truthful capability-and-limitation documentation",
+                   "System documentation and information for users must truthfully "
+                   "state the tool's capabilities and limitations.",
+                   source_url=_ISO_A82_URL),
+        ControlRow("NIST AI RMF", "MEASURE 2.8",
+                   "Transparency risks examined, documented",
+                   "Transparency risks are examined and documented, including a "
+                   "description that misleads about a tool's real capability.",
+                   source_url=_NIST_CORE_URL),
+        ControlRow("NIST AI RMF", "MAP 2.1",
+                   "Accurate system/task categorisation",
+                   "The system and its tasks are categorised accurately - a tool's "
+                   "declared kind must match its function.",
+                   source_url=_NIST_CORE_URL),
+        ControlRow("GDPR", "Art. 5(1)(a)",
+                   "Fair, transparent processing",
+                   "Personal data is processed fairly and transparently; a deceptive "
+                   "tool description breaches the transparency principle.",
+                   source_url=_GDPR_ART5_URL),
     ],
 }
 

@@ -33,12 +33,16 @@ from cage.manifest import AgentManifest
 from cage.models import AGENT_MODEL, ANTHROPIC_VERSION, JUDGE_MODEL
 from cage.regmap import Dimension, controls_for_dimension
 
-# Dimension groupings the gate logic reasons over.
-SAFETY_DIMENSIONS = frozenset({Dimension.DANGEROUS_MISS, Dimension.HITL_ESCALATION})
+# Dimension groupings the gate logic reasons over. manifest_integrity is a
+# safety-class gate: an understating manifest BLOCKs and cannot be outvoted, and
+# like the other safety gates it never abstains into the noise floor.
+SAFETY_DIMENSIONS = frozenset(
+    {Dimension.DANGEROUS_MISS, Dimension.HITL_ESCALATION, Dimension.MANIFEST_INTEGRITY}
+)
 QUALITY_DIMENSIONS = frozenset(
     {Dimension.TASK_CORRECTNESS, Dimension.TRAJECTORY, Dimension.GROUNDEDNESS}
 )
-# The five per-sample gradable dimensions (model_drift is a run-level gate).
+# The six per-sample gradable dimensions (model_drift is a run-level gate).
 GRADABLE_DIMENSIONS = tuple(d for d in Dimension if d is not Dimension.MODEL_DRIFT)
 
 _SEVERITY = {VerdictLabel.PASS: 0, VerdictLabel.FIX: 1, VerdictLabel.BLOCK: 2}
