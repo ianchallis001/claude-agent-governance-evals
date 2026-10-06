@@ -48,6 +48,15 @@ def build_parser() -> argparse.ArgumentParser:
                        help="abort if estimated spend exceeds this budget")
         p.add_argument("--repeat", type=int, default=1,
                        help="self-consistency repeats per sample (default: 1)")
+        p.add_argument("--jurisdictions", "--regions", dest="jurisdictions",
+                       nargs="+", default=None, metavar="REGION",
+                       help="scope cited controls by region preset: uk eu us all global "
+                            "(combinable). Changes which controls are listed, never the gate.")
+        p.add_argument("--frameworks", dest="frameworks",
+                       nargs="+", default=None, metavar="SLUG",
+                       help="scope cited controls to named frameworks: eu-ai-act gdpr "
+                            "uk-gdpr iso-42001 pra-ss1-23 sr-11-7 nist-ai-rmf "
+                            "(overrides --jurisdictions).")
 
     p_classify = sub.add_parser("classify", help="classify one agent manifest")
     p_classify.add_argument("manifest", help="path to an agent/tool manifest JSON file")
@@ -75,16 +84,28 @@ def _build_client(args: argparse.Namespace) -> Any | None:
     return None
 
 
+def _resolve_profile(args: argparse.Namespace) -> Any:
+    """Resolve the active jurisdiction profile from CLI args, env and config."""
+    from cage.profiles import resolve_profile
+
+    return resolve_profile(
+        cli_jurisdictions=getattr(args, "jurisdictions", None),
+        cli_frameworks=getattr(args, "frameworks", None),
+    )
+
+
 # --------------------------------------------------------------------------- #
 # classify                                                                     #
 # --------------------------------------------------------------------------- #
-def _format_classification(cls: Any, controls: list[Any]) -> str:
+def _format_classification(cls: Any, controls: list[Any], profile: Any = None) -> str:
     """Render a classification plus its regulatory control map as ASCII text."""
     lines: list[str] = []
     lines.append(f"Agent:                {cls.agent_name}")
     lines.append(f"Autonomy:             {cls.autonomy.name}")
     lines.append(f"Blast radius:         {cls.blast.name}")
     lines.append(f"Governance intensity: {cls.intensity.name}")
+    if profile is not None:
+        lines.append(f"Jurisdiction:         {profile.describe()}")
     lines.append("")
     lines.append("Evidence:")
     if cls.evidence:
@@ -119,13 +140,14 @@ def _cmd_classify(args: argparse.Namespace) -> int:
 
     manifest = load_manifest(args.manifest)
     client = _build_client(args)
+    profile = _resolve_profile(args)
     agent = ClassifierAgent(client=client)
     classification = agent.classify(manifest)
     # The agent-produced Classification leaves controls unset; attach the
-    # cumulative control map for the resolved intensity so classify is itself
-    # regulator-grounded.
-    controls = controls_for_intensity(classification.intensity)
-    print(_format_classification(classification, controls))
+    # cumulative control map for the resolved intensity, scoped to the active
+    # jurisdiction profile, so classify is itself regulator-grounded.
+    controls = controls_for_intensity(classification.intensity, **profile.filter_kwargs)
+    print(_format_classification(classification, controls, profile))
     return EXIT_PASS
 
 
@@ -159,6 +181,9 @@ def format_scorecard(result: Any, dataset_name: str, n_samples: int,
         f"judge: {manifest.get('judge_model', '?')}  "
         f"drift: {'DETECTED' if drift.get('drifted') else 'none'}"
     )
+    juris = detail.get("jurisdiction")
+    if juris:
+        lines.append(f"jurisdiction: {juris}")
     lines.append("")
 
     # Column layout (space-padded; controls is the free-width trailing column).
@@ -205,6 +230,7 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         dataset = load_dataset(default_golden_path())
 
     client = _build_client(args)
+    profile = _resolve_profile(args)
     task = governance_task(client=client, dataset=dataset)
     result = run_eval(
         task,
@@ -212,6 +238,8 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         threshold=args.threshold,
         max_cost_usd=args.max_cost_usd,
         repeat=args.repeat,
+        jurisdiction_label=profile.describe(),
+        **profile.filter_kwargs,
     )
     print(format_scorecard(
         result, dataset.name, len(dataset), args.threshold, args.repeat

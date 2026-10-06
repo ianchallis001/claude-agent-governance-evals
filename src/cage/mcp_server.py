@@ -170,30 +170,42 @@ def regmap_payload() -> dict[str, Any]:
     }
     return {
         "description": (
-            "Regulatory control map across EU AI Act, ISO/IEC 42001, PRA SS1/23 "
-            "and US SR 11-7. 'by_intensity' is cumulative up the scale."
+            "Regulatory control map across EU AI Act, GDPR, UK GDPR, ISO/IEC 42001, "
+            "NIST AI RMF, PRA SS1/23 and US SR 11-7 (regions EU/UK/US/GLOBAL). "
+            "'by_intensity' is cumulative up the scale. Each row carries its region; "
+            "callers can scope the classify_manifest tool by jurisdiction."
         ),
         "by_intensity": by_intensity,
         "by_dimension": by_dimension,
     }
 
 
-def classify_payload(agent_name: str, tools: list[dict[str, Any]]) -> dict[str, Any]:
+def classify_payload(
+    agent_name: str,
+    tools: list[dict[str, Any]],
+    jurisdictions: list[str] | None = None,
+) -> dict[str, Any]:
     """Classify a manifest and return the classification plus its control map.
 
     ``tools`` is a list of plain tool mappings ({name, description, kind,
-    reversible}). Raises :class:`ValueError` on any structurally invalid manifest
-    (unknown tool kind, duplicate or empty names, and so on).
+    reversible}). ``jurisdictions`` is an optional list of region strings
+    (EU / UK / US / GLOBAL); when given, the cited controls are scoped to those
+    regions (the GLOBAL baseline is always retained), otherwise every framework's
+    controls are listed. Raises :class:`ValueError` on any structurally invalid
+    manifest (unknown tool kind, duplicate or empty names, and so on).
     """
+    regions = [str(r).upper() for r in jurisdictions] if jurisdictions else None
     manifest = AgentManifest.from_dict({"name": agent_name, "tools": tools})
-    classification = classify_manifest(manifest)
+    classification = classify_manifest(manifest, jurisdictions=regions)
     return {
         "classification": classification.to_dict(),
         "regulatory_controls": {
             "intensity": classification.intensity.name,
+            "jurisdictions": sorted({c.region for c in classification.controls}) if regions
+            else "all",
             "intensity_controls": [c.to_dict() for c in classification.controls],
             "dimension_controls": {
-                dim.value: [c.to_dict() for c in controls_for_dimension(dim)]
+                dim.value: [c.to_dict() for c in controls_for_dimension(dim, regions)]
                 for dim in Dimension
             },
         },
@@ -220,8 +232,9 @@ def review_prompt_text(agent_name: str, classification_json: str = "") -> str:
         "",
         "1. State whether the resolved governance intensity looks correct for "
         "what this agent can do, and why.",
-        "2. For the resolved intensity, confirm each named control (EU AI Act, "
-        "ISO/IEC 42001, PRA SS1/23, US SR 11-7) is satisfied or flag the gap.",
+        "2. For the resolved intensity, confirm each named control (across the "
+        "EU AI Act, GDPR, UK GDPR, ISO/IEC 42001, NIST AI RMF, PRA SS1/23 and "
+        "US SR 11-7, scoped to the active jurisdiction) is satisfied or flag the gap.",
         "3. Check human-oversight and escalation: does the agent escalate when "
         "and only when it should for its blast radius?",
         "4. Call out any dangerous or irreversible capability that is not matched "
@@ -271,11 +284,19 @@ def build_server(classifier: Callable[[str, list[dict[str, Any]]], dict[str, Any
         reversible: bool = True
 
     # --- Tool: classify_manifest -------------------------------------------
-    async def classify_manifest_tool(name, tools, ctx):
-        """Classify ``name`` + ``tools`` and publish the result as a resource."""
+    async def classify_manifest_tool(name, tools, ctx, jurisdictions=None):
+        """Classify ``name`` + ``tools`` and publish the result as a resource.
+
+        ``jurisdictions`` (optional) scopes the cited controls to a list of region
+        strings (EU / UK / US / GLOBAL); omitted -> every framework's controls.
+        """
         tool_dicts = [t.model_dump() for t in tools]
         try:
-            result = classify_fn(name, tool_dicts)
+            # Keep an injected 2-arg classifier working when no region is scoped.
+            if jurisdictions:
+                result = classify_fn(name, tool_dicts, list(jurisdictions))
+            else:
+                result = classify_fn(name, tool_dicts)
         except ValueError as exc:
             # A client error (a bad manifest), not a server crash. Log to stderr
             # and surface a specific, actionable tool error.
@@ -307,6 +328,7 @@ def build_server(classifier: Callable[[str, list[dict[str, Any]]], dict[str, Any
     classify_manifest_tool.__annotations__ = {
         "name": str,
         "tools": list[_ToolInput],
+        "jurisdictions": list[str] | None,
         "ctx": mcp.Context,
         "return": dict,
     }
@@ -317,7 +339,8 @@ def build_server(classifier: Callable[[str, list[dict[str, Any]]], dict[str, Any
         description=(
             "Classify an agent's tool manifest onto the autonomy x blast-radius "
             "matrix and return its governance intensity plus the attaching "
-            "regulatory controls."
+            "regulatory controls. Optionally pass 'jurisdictions' (a list of region "
+            "strings EU/UK/US/GLOBAL) to scope the cited controls; omitted lists all."
         ),
     )
 
