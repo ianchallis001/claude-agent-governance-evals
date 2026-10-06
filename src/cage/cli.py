@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
         "Claude tool-use agent against regulator-grounded controls.",
     )
     parser.add_argument("--version", action="store_true", help="print version and exit")
-    sub = parser.add_subparsers(dest="command", metavar="{classify,eval}")
+    sub = parser.add_subparsers(dest="command", metavar="{classify,eval,compare}")
 
     def _shared(p: argparse.ArgumentParser) -> None:
         p.add_argument("--mock", action="store_true",
@@ -66,6 +66,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--dataset", default=None,
                         help="path to a dataset JSON file (default: bundled golden set)")
     _shared(p_eval)
+
+    p_compare = sub.add_parser(
+        "compare", help="run the eval across several models and print a comparison matrix"
+    )
+    p_compare.add_argument("--models", default=None, metavar="CSV",
+                           help="comma-separated model ids (default: the current-generation "
+                                "set - claude-sonnet-5-5, claude-opus-5-5, claude-haiku-4-5)")
+    p_compare.add_argument("--dataset", default=None,
+                           help="path to a dataset JSON file (default: bundled golden set)")
+    _shared(p_compare)
 
     return parser
 
@@ -247,6 +257,39 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
+# --------------------------------------------------------------------------- #
+# compare                                                                      #
+# --------------------------------------------------------------------------- #
+def _parse_models(raw: str | None) -> list[str] | None:
+    """Parse the ``--models`` CSV into a clean id list, or ``None`` for the default."""
+    if not raw:
+        return None
+    ids = [m.strip() for m in raw.split(",")]
+    ids = [m for m in ids if m]
+    return ids or None
+
+
+def _cmd_compare(args: argparse.Namespace) -> int:
+    """Handle ``cage compare``: run the eval across models and print the matrix."""
+    from cage.compare import format_matrix, run_comparison
+    from cage.evals.task import default_golden_path, load_dataset
+
+    if args.dataset is not None:
+        dataset = load_dataset(args.dataset)
+    else:
+        dataset = load_dataset(default_golden_path())
+
+    matrix = run_comparison(
+        _parse_models(args.models),
+        dataset=dataset,
+        threshold=args.threshold,
+        repeat=args.repeat,
+        mock=getattr(args, "mock", False),
+    )
+    print(format_matrix(matrix))
+    return matrix.exit_code
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point. Parses args, dispatches, and returns a gate exit code."""
     parser = build_parser()
@@ -266,6 +309,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_classify(args)
     if args.command == "eval":
         return _cmd_eval(args)
+    if args.command == "compare":
+        return _cmd_compare(args)
 
     parser.print_help()  # pragma: no cover - argparse guards this
     return EXIT_PASS

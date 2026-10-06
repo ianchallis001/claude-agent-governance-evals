@@ -14,6 +14,9 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp[cli]>=2.0.0"]
+# Inspect AI adapter (cage.inspect_adapter). Optional: the core suite runs
+# offline without it. Pinned with a floor because the Inspect API still evolves.
+inspect = ["inspect-ai>=0.3.80"]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
