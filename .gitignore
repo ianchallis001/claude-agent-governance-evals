@@ -22,6 +22,10 @@ htmlcov/
 .eval_runs/
 *.local.json
 
+# Inspect AI eval logs
+logs/
+*.eval
+
 # OS / editor
 .DS_Store
 Thumbs.db
