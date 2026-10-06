@@ -106,9 +106,12 @@ class Tool:      name: str; description: str; kind: ToolKind; reversible: bool =
 @dataclass
 class AgentManifest:  name: str; tools: list[Tool]
 
-load_manifest(path) -> AgentManifest        # JSON file -> validated manifest
-AgentManifest.from_dict(data) -> AgentManifest
-AgentManifest.validate() -> None            # raises ValueError on bad structure
+class ManifestError(ValueError): path   # pinpoints the fault, e.g. "tools[2].kind"
+
+load_manifest(path, *, strict=False) -> AgentManifest   # JSON file -> validated manifest
+AgentManifest.from_dict(data, *, strict=False) -> AgentManifest
+AgentManifest.validate() -> None            # raises ManifestError on bad structure
+# strict=True also rejects unknown fields and silent type coercions (name/reversible).
 ```
 
 ### Classification (`cage.classify`)
