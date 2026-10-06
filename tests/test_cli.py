@@ -134,7 +134,8 @@ def test_eval_mock_passes_and_prints_scorecard(capsys):
     assert "cage eval" in out
     # Every dimension appears as a scorecard row.
     for dim in ("task_correctness", "trajectory", "groundedness",
-                "dangerous_miss", "hitl_escalation", "model_drift"):
+                "dangerous_miss", "hitl_escalation", "model_drift",
+                "manifest_integrity"):
         assert dim in out
     assert "gate: PASS" in out
     assert "exit: 0" in out
