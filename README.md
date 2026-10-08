@@ -502,11 +502,14 @@ provenance verifier may reject `mockllm/*` names.
 
 ## Collector assessment governance
 
-`cage.collectors` makes CAGE the assessment-governance mechanism for the Affinity
-Reply Collector platform ([ADR-0004](docs/adr/ADR-0004-cage-as-collector-assessment-mechanism.md)).
-It is stdlib-only, imports no SDK at load, never writes to a collector run
-folder, and, like the MCP server, classifies and judges rather than enforces
-(ADR-0002).
+`cage.collectors` lets CAGE govern the *synthesis* step of any findings-based
+assessment pipeline - one that collects machine findings from a target estate and
+turns them into client-facing ratings and narrative
+([ADR-0004](docs/adr/ADR-0004-cage-as-collector-assessment-mechanism.md)). The
+pipeline, its findings, and the assessments it produces belong to whoever runs it;
+CAGE is the mechanism they call, not the owner of their work. It is stdlib-only,
+imports no SDK at load, never writes to a run folder, and, like the MCP server,
+classifies and judges rather than enforces (ADR-0002).
 
 | Module | Public API | What it does |
 |---|---|---|
@@ -516,11 +519,14 @@ folder, and, like the MCP server, classifies and judges rather than enforces
 
 A rating cites evidence with a token of the form `[ref: <pack>@<ver>/<finding_id>]`.
 
-**Not yet wired.** The live Collector renderer does not call this gate. That
-rewire changes customer-facing output, so it is deferred to a human-gated step
-(BOARD ticket C-05); the plan is in
-[`docs/collector-integration.md`](docs/collector-integration.md). Anchoring proves
-a rating cites a real finding, not that the finding supports it.
+**Wiring is the caller's step.** CAGE ships the mechanism; a consumer pipeline
+calls it. Wiring it into a pipeline's live renderer changes that pipeline's own
+customer-facing output, so it is the caller's human-gated decision - the
+integration guide is in
+[`docs/collector-integration.md`](docs/collector-integration.md), with the
+platform that motivated this work carried as the worked example (BOARD ticket
+C-05). Anchoring proves a rating cites a real finding, not that the finding
+supports it.
 
 ---
 

@@ -64,7 +64,7 @@ behaviour it adds is covered by a new or updated test.
 | [x] | C-02 | `collectors/assessment.py` | Assessment gate: anchoring, template-hash drift, reproducibility |
 | [x] | C-03 | `collectors/annex_iii.py` | Annex III reuse wrapper over the classifier |
 | [x] | C-04 | `docs/`, `README.md`, `SPEC.md` | ADR-0004 + collector-integration wiring plan + docs |
-| [ ] | C-05 | ai_rag (out of repo) | DEFERRED, human-gated: wire the live renderer / AssessmentNarrativeWriter to the gate (customer-output-affecting stop-line) |
+| [ ] | C-05 | consumer pipeline (out of this repo) | DEFERRED, caller's human-gated step: a consumer wires its own live renderer to the gate (customer-output-affecting). Worked example in the integration guide |
 
 ---
 
@@ -134,7 +134,8 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   findings-pack adapter, an assessment gate (evidence anchoring and
   template-hash drift BLOCK; non-reproducibility FIX) and an Annex III wrapper
   over the classifier; ADR-0004 and `docs/collector-integration.md` record the
-  decision and the wiring plan. C-05 (live ai_rag wiring) is open and
-  human-gated. `python -m pytest`: 420 passed, 1 skipped (421 collected).
+  decision and the integration guide. C-05 (a consumer wiring its own live
+  renderer) is open and the caller's human-gated step. `python -m pytest`: 420
+  passed, 1 skipped (421 collected).
   `ruff check .`: clean.
 - Remaining Phase 1: P1-01 (`manifest.py` hardening).

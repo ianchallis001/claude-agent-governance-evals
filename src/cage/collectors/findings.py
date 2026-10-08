@@ -1,8 +1,9 @@
 """Read-only loader for a collector run's ``findings.jsonl`` and ``manifest.json``.
 
-Input contract: ``collector-findings-schema.md`` v1 (ai_rag reference). A run
-folder holds ``manifest.json`` (run metadata) and ``findings.jsonl`` (NDJSON, UTF-8,
-LF, one finding per line). This module only ever *reads* those files.
+Input contract: a findings pack conforming to the collector findings schema
+(``collector-findings-schema.md`` v1). A run folder holds ``manifest.json`` (run
+metadata) and ``findings.jsonl`` (NDJSON, UTF-8, LF, one finding per line). This
+module only ever *reads* those files; the pack belongs to the caller.
 
 ``schema_version`` is gated strictly: ``"1"`` is accepted and anything else is
 refused rather than guessed at. Every failure raises
