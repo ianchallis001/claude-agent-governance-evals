@@ -515,7 +515,7 @@ classifies and judges rather than enforces (ADR-0002).
 |---|---|---|
 | `cage.collectors.findings` | `load_findings`, `load_manifest`, `parse_finding`, `parse_manifest`, `Finding`, `CollectorManifest`, `PackRef`, `Target`, `Evidence`, `SCHEMA_VERSION` | Strict read-only loaders for `findings.jsonl` and the manifest; `schema_version` "1" only; errors are `ManifestError` with a path such as `findings.jsonl:3.pack.sha256` |
 | `cage.collectors.assessment` | `AssessmentGate`, `evaluate_assessment`, `AssessmentConfig`, `Rating`, `check_anchoring`, `check_template_drift`, `check_reproducibility`, `aggregate_verdict`, `template_hash` | Evidence anchoring (BLOCK), template-hash drift (BLOCK), reproducibility envelope (FIX), aggregated BLOCK > FIX > PASS with exit codes 0 / 1 / 2 |
-| `cage.collectors.annex_iii` | `classify_annex_iii`, `is_annex_iii_clause`, `ANNEX_III_AREAS` | Wrapper over `classify_manifest` returning only EU AI Act Art. 9-15 controls; usable by library import, CLI or MCP |
+| `cage.collectors.annex_iii` | `classify_annex_iii`, `is_annex_iii_clause`, `ANNEX_III_AREAS` | Wrapper over `classify_manifest` returning the EU AI Act Art. 9-15 substantive high-risk requirements (Chapter III Section 2; not the Section 3 obligations, conformity assessment or Art. 50, which may apply alongside); usable by library import, CLI or MCP |
 
 A rating cites evidence with a token of the form `[ref: <pack>@<ver>/<finding_id>]`.
 

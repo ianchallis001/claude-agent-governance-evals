@@ -7,15 +7,25 @@ attach to it. Both already live in :func:`cage.classify.classify_manifest` and
 ``cage.regmap``; this module is a THIN wrapper that re-uses them. It does not
 re-implement the matrix or the control catalogue - it calls
 ``classify_manifest(..., frameworks=["EU AI Act"])`` (the existing framework
-filter) and then keeps only the clauses that carry the Chapter III Section 2
-high-risk requirements (Arts. 9-15) that apply to Annex III systems. Art. 50
-(transparency for certain AI systems) is not an Annex III obligation and is
-dropped.
+filter) and then keeps only the substantive Chapter III Section 2 high-risk
+*requirements* (Arts. 9-15, made binding by the Art. 8 chapeau).
+
+This is the high-risk *requirements* subset only. It deliberately does NOT cover
+the Section 3 provider and deployer obligations (Arts. 16-27 - e.g. quality
+management, automatically generated logs, the fundamental-rights impact
+assessment), conformity assessment (Arts. 43, 47-49), or Art. 50 transparency.
+Art. 50 sits in Chapter IV, is triggered by an AI system's function rather than
+its risk class, and may apply *alongside* an Annex III system - it is out of this
+subset, not inapplicable. (Scoping checked 2026-10-08 against the Act's
+structure; a EUR-Lex primary-source pass is still outstanding - see the project
+notes.)
 
 Whether a use case falls in an Annex III area (employment, credit scoring, and
-so on) is a legal determination the classifier cannot make from a tool
-manifest. The caller may declare it via ``annex_iii_area``; the wrapper only
-validates and echoes that declaration. It never infers one.
+so on) - and the Art. 6(3) "not high-risk" derogation, and provider-vs-deployer
+role (Art. 25) - are legal determinations the classifier cannot make from a tool
+manifest; they are for counsel. The caller may declare the area via
+``annex_iii_area``; the wrapper only validates and echoes that declaration. It
+never infers one.
 
 Three call paths reach the same classifier:
 
@@ -51,7 +61,8 @@ from cage.regmap import ControlRow
 
 EU_AI_ACT = "EU AI Act"
 
-# Chapter III Section 2 requirements for high-risk systems (Arts. 9-15).
+# Substantive Chapter III Section 2 requirements for high-risk systems
+# (Arts. 9-15; Art. 8 is the binding chapeau, not a substantive control).
 ANNEX_III_ARTICLE_RANGE = (9, 15)
 
 # The eight Annex III areas (Regulation (EU) 2024/1689, Annex III points 1-8).
@@ -136,6 +147,8 @@ def classify_annex_iii(
         controls=controls,
         rationale=(
             f"{base.rationale} Scoped to {len(controls)} EU AI Act Art. 9-15 "
-            "clause(s) relevant to Annex III high-risk systems."
+            "substantive high-risk requirement clause(s) (Chapter III Section 2); "
+            "Section 3 obligations, conformity assessment and Art. 50 transparency "
+            "are out of this subset and may apply alongside."
         ),
     )

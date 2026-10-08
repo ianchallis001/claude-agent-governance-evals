@@ -52,8 +52,10 @@ library under `cage.collectors`:
      within tolerance; a miss is a FIX, not a BLOCK.
 3. **An Annex III reuse surface** (`cage.collectors.annex_iii`): a thin wrapper
    over `cage.classify.classify_manifest` that places an agent on the two-axis
-   matrix and returns only the EU AI Act Art. 9-15 high-risk controls, reachable
-   by library import, the `cage` CLI or the MCP server.
+   matrix and returns the EU AI Act Art. 9-15 substantive high-risk requirements
+   (Chapter III Section 2; not the Section 3 provider/deployer obligations,
+   conformity assessment, or Art. 50 transparency, which may apply alongside),
+   reachable by library import, the `cage` CLI or the MCP server.
 
 ### The ADR-0002 split still holds
 
