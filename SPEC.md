@@ -66,6 +66,12 @@ src/cage/
   inspect_adapter.py Inspect AI adapter (lazy, optional inspect_ai): golden set ->
                      Inspect Dataset, cage's classifier as the solver, the seven
                      dimensions as scorers, @task cage_governance_task.
+  collectors/
+    __init__.py      Re-exports the collectors public API (no SDK imports).
+    findings.py      Read-only findings-pack loaders (schema_version "1" only).
+    assessment.py    Assessment-governance gate: anchoring, template drift,
+                     reproducibility -> PASS/FIX/BLOCK (reuses evals.drift).
+    annex_iii.py     EU AI Act Annex III wrapper over classify_manifest.
   data/
     golden.json      Golden dataset (section 7 schema).
     calibration.json Human-labelled calibration set (section 7 schema).
@@ -87,7 +93,9 @@ and the regulatory mapping) to keep the import graph acyclic:
 `models` and `manifest` are leaves; `classify` -> `manifest`; `regmap` ->
 `classify`; `profiles` -> `regmap`; the `evals` modules depend on
 `regmap`/`classify`/`models`; `agent` and `cli` sit on top (`cli` also -> `profiles`);
-`mcp_server` is independent of the engine.
+`mcp_server` is independent of the engine. `collectors.findings` -> `manifest`;
+`collectors.assessment` -> `collectors.findings`, `evals.drift`, `evals.judge`;
+`collectors.annex_iii` -> `classify`, `regmap`.
 
 ---
 
@@ -421,6 +429,11 @@ are delivered now; each ticket fills the engine body that currently raises
 | **P5-03** | `regmap.py`, `evals/judge.py`, `evals/scorer.py`, `evals/safety.py`, `evals/runner.py`, `data/*.json` | Seventh dimension `manifest_integrity`: detect a tool whose description is inconsistent with its declared kind. Deterministic `manifest_integrity_gate` + isolated judge; understatement BLOCKs (safety-class, cannot be outvoted), overstatement is FIX, honest PASSes. Region-tagged control rows; golden honest exemplars + calibration understate/overstate slice. | Understating manifest BLOCKs; overstating is FIX not BLOCK; honest PASSes; judge isolated to its dimension; golden/calibration stay balanced. |
 | **P5-01** | `inspect_adapter.py`, `pyproject.toml` | Real Inspect AI adapter: golden set -> Inspect `Dataset`; cage's classifier reused as the solver (behavioural consistency); the seven dimensions as Inspect scorers; `@task cage_governance_task` discoverable by `inspect eval cage.inspect_adapter`. `inspect_ai` is an optional extra, imported lazily. | `import cage` + the core suite pass with `inspect_ai` NOT installed; conversion/wiring unit-tested offline; a mockllm end-to-end eval runs when the SDK is present. |
 | **P5-02** | `compare.py`, `cli.py`, `models.py`, `mock.py` | Model-comparison matrix: `cage compare` runs the same eval (reusing `run_eval`) across a set of agent models (default `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5`; `--models` CSV override), prints a dimensions x models matrix with a delta column + per-model fingerprint and the model-id -> fingerprint -> drift/re-validation tie-in. Offline via a model-aware mock that perturbs only the judge quality score deterministically by id. `MODEL_SPECS`/`DEFAULT_COMPARE_MODELS` + platform addressing in `models.py`. | Matrix renders for >=2 models; deltas non-zero and reproducible under the mock; ASCII-only; exit 0 unless a model falls below `--threshold` (FIX) or trips a safety gate (BLOCK); `--models` override honoured. |
+| **C-01** | `collectors/findings.py` | Read-only loaders for a collector findings pack and manifest (`load_findings`, `load_manifest`); `schema_version` "1" only; LF-only, no duplicate ids, single run id; pinpointing `ManifestError`. | Every malformed fixture rejected with a specific path; loaders never mutate input (bytes and mtime); `tests/test_collectors_findings.py`. |
+| **C-02** | `collectors/assessment.py` | `AssessmentGate`: evidence anchoring (`[ref: pack@ver/finding_id]`; unanchored BLOCKs and cannot be outvoted), template-hash drift (extends `model_fingerprint`; BLOCK), reproducibility envelope (FIX); aggregated with the runner's precedence and 0/1/2 exit codes. | Unanchored/dangling ref BLOCKs; template or model change BLOCKs; non-reproducible is FIX; imports without SDKs; `tests/test_collectors_assessment.py`. |
+| **C-03** | `collectors/annex_iii.py` | `classify_annex_iii()`: thin wrapper over `classify_manifest` returning only EU AI Act Art. 9-15 controls plus an optional declared Annex III area. | Axes identical to `classify_manifest`; control set is Art. 9-15 only; JSON-serialisable; `tests/test_collectors_annex_iii.py`. |
+| **C-04** | `docs/adr/ADR-0004-*.md`, `docs/collector-integration.md`, `README.md`, `SPEC.md`, `BOARD.md` | ADR plus a wiring plan; docs for the collectors modules. | Docs name the real modules and tests; no ai_rag change made. |
+| **C-05** | (ai_rag, out of repo) | OPEN, deferred: wire `render-collector-artefacts.py` and `AssessmentNarrativeWriter` to the gate. Customer-output-affecting, so human-gated. | Not started; see `docs/collector-integration.md`. |
 
 ---
 

@@ -26,7 +26,7 @@ ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. And the whole suite runs
 regulator-shaped scorecard with no API key and no network.
 
 > **Status (honest).** Phase 1 - the harness and the CLI - is finished and
-> tested: 331 tests, all offline, including strict-mode manifest validation with
+> tested: 421 tests (420 pass, 1 environment-conditional skip), all offline, including strict-mode manifest validation with
 > a pinpointing error taxonomy (P1-01). The datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are built and working. All Phase 1
 > and Phase 2 tickets are closed.
@@ -56,7 +56,7 @@ cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
 cage eval --mock --threshold 1.1                 # impossible bar -> FIX (exit 1), never a false PASS
 cage compare --mock                              # same eval across Sonnet 5.5 / Opus 5.5 / Haiku 4.5
-python -m pytest                                 # 367 tests, stdlib + pytest only, fully offline
+python -m pytest                                 # 421 tests, stdlib + pytest only, fully offline
 ```
 
 The runtime is **Python standard library only**. The `anthropic` SDK is imported
@@ -500,10 +500,34 @@ provenance verifier may reject `mockllm/*` names.
 
 ---
 
+## Collector assessment governance
+
+`cage.collectors` makes CAGE the assessment-governance mechanism for the Affinity
+Reply Collector platform ([ADR-0004](docs/adr/ADR-0004-cage-as-collector-assessment-mechanism.md)).
+It is stdlib-only, imports no SDK at load, never writes to a collector run
+folder, and, like the MCP server, classifies and judges rather than enforces
+(ADR-0002).
+
+| Module | Public API | What it does |
+|---|---|---|
+| `cage.collectors.findings` | `load_findings`, `load_manifest`, `parse_finding`, `parse_manifest`, `Finding`, `CollectorManifest`, `PackRef`, `Target`, `Evidence`, `SCHEMA_VERSION` | Strict read-only loaders for `findings.jsonl` and the manifest; `schema_version` "1" only; errors are `ManifestError` with a path such as `findings.jsonl:3.pack.sha256` |
+| `cage.collectors.assessment` | `AssessmentGate`, `evaluate_assessment`, `AssessmentConfig`, `Rating`, `check_anchoring`, `check_template_drift`, `check_reproducibility`, `aggregate_verdict`, `template_hash` | Evidence anchoring (BLOCK), template-hash drift (BLOCK), reproducibility envelope (FIX), aggregated BLOCK > FIX > PASS with exit codes 0 / 1 / 2 |
+| `cage.collectors.annex_iii` | `classify_annex_iii`, `is_annex_iii_clause`, `ANNEX_III_AREAS` | Wrapper over `classify_manifest` returning only EU AI Act Art. 9-15 controls; usable by library import, CLI or MCP |
+
+A rating cites evidence with a token of the form `[ref: <pack>@<ver>/<finding_id>]`.
+
+**Not yet wired.** The live Collector renderer does not call this gate. That
+rewire changes customer-facing output, so it is deferred to a human-gated step
+(BOARD ticket C-05); the plan is in
+[`docs/collector-integration.md`](docs/collector-integration.md). Anchoring proves
+a rating cites a real finding, not that the finding supports it.
+
+---
+
 ## Claims backed by tests
 
 Every headline claim below is proved by a named test on disk. Run any one with
-`python -m pytest -k <test_name>`, or all 331 with `python -m pytest`.
+`python -m pytest -k <test_name>`, or all 421 with `python -m pytest`.
 
 | Claim | Proven by (test) | File |
 |-------|------------------|------|
@@ -529,6 +553,12 @@ Every headline claim below is proved by a named test on disk. Run any one with
 | `mcp_server` **imports without `mcp` installed** (lazy import) | `test_module_imports_without_mcp` | `tests/test_mcp_server.py` |
 | CLI output is **ASCII-only**; `eval --mock` exits 0 on PASS and 1 on FIX | `test_subprocess_output_is_ascii`, `test_subprocess_eval_mock_exits_zero`, `test_subprocess_eval_mock_fix_exits_one` | `tests/test_cli.py` |
 | **Regional profiles** scope the cited controls (region presets union; GLOBAL always kept; precedence CLI > env > config) | `test_jurisdiction_filter_emits_only_selected_regions_plus_global`, `test_presets_are_combinable_by_union`, `test_config_file_pyproject` | `tests/test_regmap.py`, `tests/test_profiles.py` |
+| A findings pack is loaded **read-only and strictly**: bad schema version, CRLF, duplicate id are refused with a pinpointing path | `test_unknown_schema_version_rejected`, `test_crlf_rejected`, `test_duplicate_finding_id_rejected`, `test_loading_does_not_mutate_input` | `tests/test_collectors_findings.py` |
+| A synthesised rating with **no resolvable evidence ref BLOCKs** and cannot be outvoted by good ratings | `test_unanchored_rating_blocks`, `test_unresolvable_ref_blocks`, `test_anchoring_cannot_be_outvoted_by_many_good_ratings` | `tests/test_collectors_assessment.py` |
+| A **prompt-template change BLOCKs** via the same fingerprint as a model-id change | `test_template_hash_change_blocks_via_drift`, `test_model_id_change_blocks_via_the_same_fingerprint` | `tests/test_collectors_assessment.py` |
+| A non-reproducible re-derivation is a **FIX, not a BLOCK**; the gate uses the runner's precedence and exit codes | `test_non_reproducible_rederivation_is_a_fix_not_a_block`, `test_block_beats_fix_in_a_full_run`, `test_exit_code_mapping_matches_runner` | `tests/test_collectors_assessment.py` |
+| The Annex III surface returns **only EU AI Act Art. 9-15** controls and the same axes as `classify_manifest` | `test_controls_are_eu_ai_act_articles_9_to_15_only`, `test_axes_match_classify_manifest`, `test_mcp_path_yields_same_placement` | `tests/test_collectors_annex_iii.py` |
+| `cage.collectors` **imports without `anthropic` or `mcp`** installed | `test_module_imports_without_anthropic_or_mcp` | `tests/test_collectors_assessment.py` |
 
 ---
 
@@ -701,10 +731,11 @@ src/cage/            # the harness (stdlib-only runtime)
   mcp_server.py        MCP server entrypoint (lazy mcp)
   inspect_adapter.py   Inspect AI adapter (lazy, optional inspect_ai)
   gateway_stub.py      reference enforcement proxy (ADR-0002)
+  collectors/          findings-pack adapter, assessment gate, Annex III reuse (ADR-0004)
   cli.py               the `cage` CLI
   data/                golden.json + calibration.json
-tests/               # 331 tests, one module per src module
-docs/adr/            # architecture decision records (ADR-0001..0003)
+tests/               # 421 tests, one module per src module
+docs/adr/            # architecture decision records (ADR-0001..0004)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract
 BOARD.md             # feature planning board / ticket state
@@ -713,7 +744,9 @@ DATASET.md           # dataset provenance, weighting, and honest limits
 
 The design decisions are written up as ADRs under [`docs/adr/`](docs/adr/):
 Messages API over Bedrock (ADR-0001), governance as an MCP server rather than a
-gateway (ADR-0002), and the single-author DoD adaptation (ADR-0003).
+gateway (ADR-0002), and the single-author DoD adaptation (ADR-0003), and CAGE as the Collector
+assessment-governance mechanism (ADR-0004; wiring plan in
+[`docs/collector-integration.md`](docs/collector-integration.md)).
 
 ---
 

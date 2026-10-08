@@ -56,6 +56,18 @@ behaviour it adds is covered by a new or updated test.
 
 ---
 
+## Phase 6 - Collector assessment governance
+
+| State | Ticket | Module(s) | Deliverable |
+|---|---|---|---|
+| [x] | C-01 | `collectors/findings.py` | Read-only findings-pack and manifest loaders |
+| [x] | C-02 | `collectors/assessment.py` | Assessment gate: anchoring, template-hash drift, reproducibility |
+| [x] | C-03 | `collectors/annex_iii.py` | Annex III reuse wrapper over the classifier |
+| [x] | C-04 | `docs/`, `README.md`, `SPEC.md` | ADR-0004 + collector-integration wiring plan + docs |
+| [ ] | C-05 | ai_rag (out of repo) | DEFERRED, human-gated: wire the live renderer / AssessmentNarrativeWriter to the gate (customer-output-affecting stop-line) |
+
+---
+
 ## Dependency order
 
 ```
@@ -117,4 +129,12 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   MEASURE 2.8 / MAP 2.1, GDPR Art. 5(1)(a)); golden gains two honest exemplars
   (now 42), calibration gains an understate + overstate slice (now 12). `python
   -m pytest`: 331 passed. `cage eval --mock`: PASS (exit 0).
+- **2026-10-08** - Collector assessment governance landed (C-01..C-04) on
+  `feat/collector-assessment-mechanism`. `cage.collectors` adds a read-only
+  findings-pack adapter, an assessment gate (evidence anchoring and
+  template-hash drift BLOCK; non-reproducibility FIX) and an Annex III wrapper
+  over the classifier; ADR-0004 and `docs/collector-integration.md` record the
+  decision and the wiring plan. C-05 (live ai_rag wiring) is open and
+  human-gated. `python -m pytest`: 420 passed, 1 skipped (421 collected).
+  `ruff check .`: clean.
 - Remaining Phase 1: P1-01 (`manifest.py` hardening).
