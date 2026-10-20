@@ -116,5 +116,5 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   added to `regmap.py` (EU AI Act Art. 13/50/15, ISO/IEC 42001 A.8.2, NIST AI RMF
   MEASURE 2.8 / MAP 2.1, GDPR Art. 5(1)(a)); golden gains two honest exemplars
   (now 42), calibration gains an understate + overstate slice (now 12). `python
-  -m pytest`: 331 passed. `cage eval --mock`: PASS (exit 0).
+  -m pytest`: 371 passed. `cage eval --mock`: PASS (exit 0).
 - Remaining Phase 1: P1-01 (`manifest.py` hardening).

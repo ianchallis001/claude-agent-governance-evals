@@ -26,7 +26,7 @@ ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. The whole suite runs
 scorecard with control citations, with no API key and no network.
 
 > **Status (honest).** Phase 1 - the harness and the CLI - is finished and
-> tested: 331 tests, all offline, including strict-mode manifest validation with
+> tested: 371 tests, all offline, including strict-mode manifest validation with
 > a pinpointing error taxonomy (P1-01). The datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are built and working. All Phase 1
 > and Phase 2 tickets are closed.
@@ -56,7 +56,7 @@ cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
 cage eval --mock --threshold 1.1                 # impossible bar -> FIX (exit 1), never a false PASS
 cage compare --mock                              # same eval across Sonnet 5.5 / Opus 5.5 / Haiku 4.5
-python -m pytest                                 # 331 tests, stdlib + pytest only, fully offline
+python -m pytest                                 # 371 tests, stdlib + pytest only, fully offline
 ```
 
 The runtime is **Python standard library only**. The `anthropic` SDK is imported
@@ -502,7 +502,7 @@ provenance verifier may reject `mockllm/*` names.
 ## Claims backed by tests
 
 Every headline claim below is proved by a named test on disk. Run any one with
-`python -m pytest -k <test_name>`, or all 331 with `python -m pytest`.
+`python -m pytest -k <test_name>`, or all 371 with `python -m pytest`.
 
 | Claim | Proven by (test) | File |
 |-------|------------------|------|
@@ -700,7 +700,7 @@ src/cage/            # the harness (stdlib-only runtime)
   gateway_stub.py      reference enforcement proxy (ADR-0002)
   cli.py               the `cage` CLI
   data/                golden.json + calibration.json
-tests/               # 331 tests, one module per src module
+tests/               # 371 tests, one module per src module
 docs/adr/            # architecture decision records (ADR-0001..0003)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract
