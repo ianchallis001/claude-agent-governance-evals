@@ -1,0 +1,15 @@
+{
+  "name": "a",
+  "tools": [
+    {
+      "name": "lookup",
+      "description": "read a public record",
+      "kind": "read_public"
+    },
+    {
+      "name": "lookup",
+      "description": "read a public record",
+      "kind": "read_public"
+    }
+  ]
+}
