@@ -1,0 +1,9 @@
+{
+  "name": "a",
+  "tools": [
+    {
+      "name": "x",
+      "description": "d"
+    }
+  ]
+}

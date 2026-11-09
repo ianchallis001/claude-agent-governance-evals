@@ -1,0 +1,11 @@
+{
+  "name": "a",
+  "tools": [
+    {
+      "name": "x",
+      "description": "d",
+      "kind": "read_public",
+      "danger": true
+    }
+  ]
+}
