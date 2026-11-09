@@ -54,6 +54,17 @@ behaviour it adds is covered by a new or updated test.
 |---|---|---|---|
 | [x] | P5-03 | `regmap.py`, `evals/{judge,scorer,safety,runner}.py`, `data/*.json` | Seventh dimension `manifest_integrity`: detect a tool whose description is inconsistent with its declared kind (understate -> BLOCK, overstate -> FIX, honest -> PASS) |
 
+## Phase 6 - Collector assessment governance
+
+| State | Ticket | Module(s) | Deliverable |
+|---|---|---|---|
+| [x] | C-01 | `collectors/findings.py` | Read-only findings-pack and manifest loaders |
+| [x] | C-02 | `collectors/assessment.py` | Assessment gate: anchoring, template-hash drift, reproducibility |
+| [x] | C-03 | `collectors/annex_iii.py` | Annex III reuse wrapper over the classifier |
+| [x] | C-04 | `docs/` | ADR-0004 + collector-integration wiring plan |
+| [x] | C-06 | `collectors/assessment.py` | Per-citation evidence anchoring - a fabricated co-citation beside a real ref now BLOCKs (was any-ref-resolves), zero-ref still BLOCKs |
+| [ ] | C-05 | consumer pipeline (out of this repo) | DEFERRED, caller's human-gated step: a consumer wires its own live renderer to the gate (customer-output-affecting). Worked example in the integration guide |
+
 ---
 
 ## Dependency order
@@ -130,3 +141,15 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   `mcp_server.py`) were delivered earlier but still showed `[ ]` - flipped to
   `[x]`. `python -m pytest`: 388 passed, 1 skipped. `ruff check .`: clean. Phase 1
   and Phase 2 are now complete on the board.
+- **2026-11-09** - Collector assessment governance landed on `main` (C-01..C-04 +
+  new C-06). The `cage.collectors` subpackage was re-homed from its original
+  branch, which shared no history with the re-rooted `main` after the email
+  scrub: `findings.py` (read-only findings/manifest adapter), `assessment.py`
+  (anchoring + template-hash drift + reproducibility gate), `annex_iii.py`
+  (Annex III reuse over the classifier), plus ADR-0004 and
+  `docs/collector-integration.md`. C-06 hardens evidence anchoring to
+  per-citation resolution - a fabricated co-citation beside a real `[ref]` now
+  BLOCKs (was any-ref-resolves), zero-ref still BLOCKs. C-05 (a consumer wiring
+  its own live renderer to the gate) stays DEFERRED as a caller-side,
+  human-gated step. `python -m pytest`: 439 passed, 1 skipped. `ruff check .`:
+  clean.
