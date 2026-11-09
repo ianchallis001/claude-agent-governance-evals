@@ -2,39 +2,39 @@
 
 ## What this is, and why
 
-Most agent eval setups do two things I don't trust. They report one average
-score, which hides the failures that actually matter. And they lean on an LLM
-judge that nobody ever checked against a human.
+Most agent eval setups do two things I don't trust. They report a single average
+score, which hides the failures that matter. And they rely on an LLM judge nobody
+has checked against a human.
 
-`cage` does it the other way round. The thing it evaluates is a **governance
+`cage` works the other way round. What it evaluates is a **governance
 classifier**: give it another agent's list of tools and it works out how much
-autonomy that agent has and how much damage it could do, then says how much
-governance that combination needs. The harness around it checks its own
-judges:
+autonomy the agent has and how much damage it could do, then how much governance
+that combination needs. The harness around that classifier checks its own judges.
+It:
 
-- it checks every judge against human labels with **Cohen's kappa**, not raw
-  accuracy;
-- it **refuses to give a verdict** when the result sits inside the judge's own
-  noise;
-- it treats a **dangerous miss** or a **missed human escalation** as a hard
-  failure that good scores elsewhere cannot cancel out;
-- and it **fails the whole run** if the model version has moved underneath it.
+- scores every judge against human labels with **Cohen's kappa**, not raw accuracy
+- withholds a verdict when the result sits inside the judge's own noise
+- treats a **dangerous miss**, or a **missed escalation to a human**, as a hard
+  failure that good scores elsewhere cannot cancel out
+- fails the whole run if the model version has moved underneath it
 
-Each of the seven things it grades is tied to a named control in the EU AI Act,
+Each of the seven dimensions it grades maps to a named control in the EU AI Act,
 ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. The whole suite runs
-**offline** against a scripted mock, so you can go from `git clone` to a full
-scorecard with control citations, with no API key and no network.
+**offline** against a scripted mock, so a `git clone` takes you to a full
+scorecard with control citations. No API key, no network.
 
-> **Status (honest).** Phase 1 - the harness and the CLI - is finished and
-> tested: 389 tests, all offline, including strict-mode manifest validation with
-> a pinpointing error taxonomy and a malformed-manifest fixture suite (P1-01). The
-> datasets (`data/golden.json`,
-> `data/calibration.json`) and the MCP server are built and working. All Phase 1
-> and Phase 2 tickets are closed.
-> [BOARD.md](BOARD.md) has the live ticket state and [SPEC.md](SPEC.md) is the
-> full contract. This is an **offline-tested reference harness, not a shipped
-> product** - the limits section near the end is deliberate, and worth reading
-> before you quote any number from here.
+> **Status (honest).** The harness, the CLI, the datasets (`data/golden.json`,
+> `data/calibration.json`) and the MCP server are all built and tested: 440 tests,
+> all offline, including strict-mode manifest validation with a pinpointing error
+> taxonomy, a malformed-manifest fixture suite, and the collector assessment layer
+> (evidence anchoring, drift and reproducibility gates). [SPEC.md](SPEC.md) is the
+> full contract. What is still open - the path from a reference harness to a
+> defensible evaluation - is tracked openly as
+> [GitHub issues and milestones](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
+> and summarised under [What's next](#whats-next) below. This is an
+> **offline-tested reference harness, not a shipped product** - the limits section
+> near the end is deliberate, and worth reading before you quote any number from
+> here.
 
 ---
 
@@ -57,7 +57,7 @@ cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
 cage eval --mock --threshold 1.1                 # impossible bar -> FIX (exit 1), never a false PASS
 cage compare --mock                              # same eval across Sonnet 5.5 / Opus 5.5 / Haiku 4.5
-python -m pytest                                 # 389 tests, stdlib + pytest only, fully offline
+python -m pytest                                 # 440 tests, stdlib + pytest only, fully offline
 ```
 
 The runtime is **Python standard library only**. The `anthropic` SDK is imported
@@ -503,7 +503,7 @@ provenance verifier may reject `mockllm/*` names.
 ## Claims backed by tests
 
 Every headline claim below is proved by a named test on disk. Run any one with
-`python -m pytest -k <test_name>`, or all 389 with `python -m pytest`.
+`python -m pytest -k <test_name>`, or all 440 with `python -m pytest`.
 
 | Claim | Proven by (test) | File |
 |-------|------------------|------|
@@ -687,6 +687,33 @@ steps to get from here to a defensible evaluation set.
 
 ---
 
+## What's next
+
+This is a reference harness, not a finished benchmark. The limits above are the
+honest gaps, and the plan to close them is tracked openly as
+[GitHub milestones and issues](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
+not buried in a file. Each milestone maps to a specific limit:
+
+- **[M1 - A defensible evaluation set](https://github.com/ianchallis001/claude-agent-governance-evals/milestone/1)**
+  - a second annotator and a measured human-to-human kappa ceiling,
+  judge-vs-consensus scoring, a larger balanced N, and an independent rubric
+  audit. Closes the single-author-labels, small-N and rubric-true-by-construction
+  limits.
+- **[M2 - Live-mode validation](https://github.com/ianchallis001/claude-agent-governance-evals/milestone/2)**
+  - a reproducible run against real Claude models, a CI live job behind a secret,
+  and a published live-vs-mock scorecard. Closes the offline-tested-only limit.
+- **[M3 - Beyond static manifests](https://github.com/ianchallis001/claude-agent-governance-evals/milestone/3)**
+  - runtime behavioural probing to catch a tool whose declared kind lies, and
+  oversight-signal inference beyond English. Closes the lying-kind and
+  English-only limits.
+- **[M4 - Reference enforcement path](https://github.com/ianchallis001/claude-agent-governance-evals/milestone/4)**
+  (optional) - a worked example wiring the classifier to an enforcement gateway,
+  per ADR-0002.
+
+Live ticket state lives on GitHub, not in this repo's files.
+
+---
+
 ## Repository layout
 
 ```
@@ -702,11 +729,11 @@ src/cage/            # the harness (stdlib-only runtime)
   gateway_stub.py      reference enforcement proxy (ADR-0002)
   cli.py               the `cage` CLI
   data/                golden.json + calibration.json
-tests/               # 389 tests, one module per src module (+ a manifest fixture suite)
+tests/               # 440 tests, one module per src module (+ a manifest fixture suite)
 docs/adr/            # architecture decision records (ADR-0001..0003)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract
-BOARD.md             # feature planning board / ticket state
+BOARD.md             # phase history (live tracking is on GitHub issues + milestones)
 DATASET.md           # dataset provenance, weighting, and honest limits
 ```
 

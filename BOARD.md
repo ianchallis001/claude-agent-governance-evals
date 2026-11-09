@@ -1,8 +1,13 @@
 # Feature Planning Board - `cage`
 
-Tracks delivery of the `claude-agent-governance-evals` harness. Ticket scope and
-Definition of Done (DoD) are authoritative in [SPEC.md](SPEC.md) section 11; this
-board tracks **state**. Move a ticket's row between the columns as it progresses.
+> **Superseded.** Live ticket tracking has moved to
+> [GitHub issues and milestones](https://github.com/ianchallis001/claude-agent-governance-evals/milestones).
+> This file is kept as the **historical phase record** (P0-P6, C-01..C-06); future
+> work is tracked there, not here.
+
+This board tracked delivery of the `cage` harness through Phases 0-6. Scope and
+Definition of Done (DoD) remain authoritative in [SPEC.md](SPEC.md) section 11;
+the phase tables below are retained as a record of what landed.
 
 Legend: `[ ]` Backlog - `[~]` In Progress - `[x]` Done
 Global DoD (every ticket): code is stdlib-only at runtime; ASCII-only code/output;
