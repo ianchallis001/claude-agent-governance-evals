@@ -1,27 +1,41 @@
 # claude-agent-governance-evals (`cage`)
 
-## What this is, and why
+## What cage is for
 
-Most agent eval setups do two things I don't trust. They report a single average
-score, which hides the failures that matter. And they rely on an LLM judge nobody
-has checked against a human.
+Two questions sit under any attempt to govern an AI agent: is it governed to the
+standard the organisation deploying it must meet, and can you trust the assessment
+enough to act on it?
 
-`cage` works the other way round. What it evaluates is a **governance
-classifier**: give it another agent's list of tools and it works out how much
-autonomy the agent has and how much damage it could do, then how much governance
-that combination needs. The harness around that classifier checks its own judges.
-It:
+For a regulated firm, this is the whole point. A `cage` run does not just produce a
+score - it produces a **control-mapped assessment**: every judgement is tied to a
+named clause in the standard the firm answers to (the EU AI Act, ISO/IEC 42001, the
+PRA's SS1/23 or the US SR 11-7), scoped to the jurisdictions that actually apply
+(UK, EU, US). That is what a model-risk or compliance function actually needs - a
+control map it can act on, not a number it then has to translate into controls.
 
-- scores every judge against human labels with **Cohen's kappa**, not raw accuracy
+`cage` produces it by reading the agent's list of tools: it works out how much
+autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
+sets the governance intensity that combination demands, and attaches the controls
+that come with it - scoped by jurisdiction or by named framework, so the run cites
+the clauses in force for that deployment.
+
+The second question is the harder one, and the reason the project exists. An
+assessment is only worth acting on if the thing that produced it has been checked.
+So wherever `cage` relies on an LLM judge, it will not let that judge decide
+anything until it has been measured against human labels. It:
+
+- scores each judge against human labels with **Cohen's kappa**, not raw accuracy
 - withholds a verdict when the result sits inside the judge's own noise
-- treats a **dangerous miss**, or a **missed escalation to a human**, as a hard
-  failure that good scores elsewhere cannot cancel out
+- treats a **dangerous miss** as a hard failure that good scores elsewhere cannot
+  cancel
 - fails the whole run if the model version has moved underneath it
 
-Each of the seven dimensions it grades maps to a named control in the EU AI Act,
-ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. The whole suite runs
-**offline** against a scripted mock, so a `git clone` takes you to a full
-scorecard with control citations. No API key, no network.
+That combination is the gap it fills. Eval frameworks run the tests but usually
+trust the judge and average the scores, so a single safety failure can be
+outvoted. Governance platforms map models to regulations, but at the level of
+policy and documentation, not an executable check you can run against an actual
+agent. `cage` does both at once, and runs fully offline - a `git clone` takes you
+to a full scorecard with control citations, no API key and no network.
 
 > **Status (honest).** The harness, the CLI, the datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are all built and tested: 440 tests,
@@ -48,7 +62,7 @@ That installs the package with its dev extras (`pytest`, `ruff`) and runs the
 full evaluation over the bundled 42-case golden set, using the offline mock
 client - **no `ANTHROPIC_API_KEY`, no network**. It prints a scorecard, one row
 per dimension, and exits `0` (PASS), `1` (FIX) or `2` (BLOCK). A few more
-commands, all of which I've run:
+commands (each exercised in the test suite):
 
 ```bash
 cage --version                                   # -> cage 0.1.0
@@ -413,8 +427,8 @@ caller can tie the judgement back to a pinned configuration.
 
 ### This is a classifier, not an enforcer (ADR-0002)
 
-The server **classifies and judges**; it does **not** enforce. I made that split
-on purpose, and it is written up in
+The server **classifies and judges**; it does **not** enforce. That split is
+deliberate, and it is written up in
 [ADR-0002](docs/adr/ADR-0002-governance-as-mcp-server-not-gateway.md):
 
 - **Enforcement belongs in a gateway, not a server.** Blocking a tool call,
@@ -453,7 +467,7 @@ server against a client that isn't this repo's test harness:
 npx @modelcontextprotocol/inspector python -m cage.mcp_server
 ```
 
-I did **not** run this here. The Inspector installs from the npm registry and this
+This was **not** run in this build. The Inspector installs from the npm registry and this
 build has no network access. So it is recorded as a step you can run, not a result
 the repo claims. The in-memory SDK tests above are the automated
 protocol-level check that did run.
@@ -612,7 +626,7 @@ production model has been validated.
 
 ## Alignment with Anthropic's "Demystifying evals for AI agents" (Jan 2026)
 
-I built this to apply the principles in that article. Where it follows them:
+The harness is built to apply the principles in that article. Where it follows them:
 
 - **Evaluate the agent, not a static benchmark.** The unit of evaluation is a
   `Task` = Dataset + Solver/Agent + Scorer. The agent runs a tool-use loop
