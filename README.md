@@ -26,8 +26,9 @@ ISO/IEC 42001, the PRA's SS1/23 and the US SR 11-7. The whole suite runs
 scorecard with control citations, with no API key and no network.
 
 > **Status (honest).** Phase 1 - the harness and the CLI - is finished and
-> tested: 371 tests, all offline, including strict-mode manifest validation with
-> a pinpointing error taxonomy (P1-01). The datasets (`data/golden.json`,
+> tested: 389 tests, all offline, including strict-mode manifest validation with
+> a pinpointing error taxonomy and a malformed-manifest fixture suite (P1-01). The
+> datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are built and working. All Phase 1
 > and Phase 2 tickets are closed.
 > [BOARD.md](BOARD.md) has the live ticket state and [SPEC.md](SPEC.md) is the
@@ -56,7 +57,7 @@ cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
 cage eval --mock --threshold 1.1                 # impossible bar -> FIX (exit 1), never a false PASS
 cage compare --mock                              # same eval across Sonnet 5.5 / Opus 5.5 / Haiku 4.5
-python -m pytest                                 # 371 tests, stdlib + pytest only, fully offline
+python -m pytest                                 # 389 tests, stdlib + pytest only, fully offline
 ```
 
 The runtime is **Python standard library only**. The `anthropic` SDK is imported
@@ -502,7 +503,7 @@ provenance verifier may reject `mockllm/*` names.
 ## Claims backed by tests
 
 Every headline claim below is proved by a named test on disk. Run any one with
-`python -m pytest -k <test_name>`, or all 371 with `python -m pytest`.
+`python -m pytest -k <test_name>`, or all 389 with `python -m pytest`.
 
 | Claim | Proven by (test) | File |
 |-------|------------------|------|
@@ -528,6 +529,7 @@ Every headline claim below is proved by a named test on disk. Run any one with
 | `mcp_server` **imports without `mcp` installed** (lazy import) | `test_module_imports_without_mcp` | `tests/test_mcp_server.py` |
 | CLI output is **ASCII-only**; `eval --mock` exits 0 on PASS and 1 on FIX | `test_subprocess_output_is_ascii`, `test_subprocess_eval_mock_exits_zero`, `test_subprocess_eval_mock_fix_exits_one` | `tests/test_cli.py` |
 | **Regional profiles** scope the cited controls (region presets union; GLOBAL always kept; precedence CLI > env > config) | `test_jurisdiction_filter_emits_only_selected_regions_plus_global`, `test_presets_are_combinable_by_union`, `test_config_file_pyproject` | `tests/test_regmap.py`, `tests/test_profiles.py` |
+| Every **malformed manifest fixture is rejected with a specific, path-pinpointed message** (lenient always; strict-only under `strict=True`); valid ones round-trip stably | `test_invalid_fixture_rejected_with_specific_message`, `test_valid_fixture_loads_and_round_trips` | `tests/test_manifest_fixtures.py` |
 
 ---
 
@@ -700,7 +702,7 @@ src/cage/            # the harness (stdlib-only runtime)
   gateway_stub.py      reference enforcement proxy (ADR-0002)
   cli.py               the `cage` CLI
   data/                golden.json + calibration.json
-tests/               # 371 tests, one module per src module
+tests/               # 389 tests, one module per src module (+ a manifest fixture suite)
 docs/adr/            # architecture decision records (ADR-0001..0003)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract

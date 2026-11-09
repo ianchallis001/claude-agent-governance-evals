@@ -20,7 +20,7 @@ behaviour it adds is covered by a new or updated test.
 
 | State | Ticket | Module(s) | Deliverable |
 |---|---|---|---|
-| [ ] | P1-01 | `manifest.py` | Harden schema validation + fixtures |
+| [x] | P1-01 | `manifest.py` | Harden schema validation + fixtures |
 | [x] | P1-02 | `classify.py` | `classify_manifest()` two-axis inference + evidence |
 | [x] | P1-03 | `regmap.py` | Complete + review the control catalogue |
 | [x] | P1-04 | `mock.py` | Record/replay transcripts + failure-localisation tests |
@@ -37,9 +37,9 @@ behaviour it adds is covered by a new or updated test.
 
 | State | Ticket | Module(s) | Deliverable |
 |---|---|---|---|
-| [ ] | P2-01 | `data/golden.json` | Author the golden dataset |
-| [ ] | P2-02 | `data/calibration.json` | Author calibration pairs + run calibration |
-| [ ] | P2-03 | `server.py` | MCP server exposing the classifier |
+| [x] | P2-01 | `data/golden.json` | Author the golden dataset |
+| [x] | P2-02 | `data/calibration.json` | Author calibration pairs + run calibration |
+| [x] | P2-03 | `mcp_server.py` | MCP server exposing the classifier (delivered as `mcp_server.py`, not `server.py`) |
 
 ## Phase 3 - Regional control profiles
 
@@ -117,4 +117,16 @@ Each closed ticket flips its `[ ]` to `[x]` here and leaves the deferred
   MEASURE 2.8 / MAP 2.1, GDPR Art. 5(1)(a)); golden gains two honest exemplars
   (now 42), calibration gains an understate + overstate slice (now 12). `python
   -m pytest`: 371 passed. `cage eval --mock`: PASS (exit 0).
-- Remaining Phase 1: P1-01 (`manifest.py` hardening).
+- **2026-11-09** - P1-01 closed (`manifest.py` hardening). The strict validator +
+  pinpointing `ManifestError` taxonomy was already in place and tested; this
+  ticket's remaining DoD item - *fixtures* - landed as
+  `tests/fixtures/manifests/{invalid,strict_invalid,valid}/` plus
+  `tests/test_manifest_fixtures.py`: every malformed manifest on disk is rejected
+  with a specific, path-pinpointed message (`invalid/` always, `strict_invalid/`
+  only under `strict=True`), every valid one round-trips stably, and a sync guard
+  fails if a fixture is added without a pinned expectation. Same pass also
+  reconciled the board to reality: P2-01 (`data/golden.json`, 42 samples), P2-02
+  (`data/calibration.json`, 12 pairs) and P2-03 (MCP server, shipped as
+  `mcp_server.py`) were delivered earlier but still showed `[ ]` - flipped to
+  `[x]`. `python -m pytest`: 388 passed, 1 skipped. `ruff check .`: clean. Phase 1
+  and Phase 2 are now complete on the board.
