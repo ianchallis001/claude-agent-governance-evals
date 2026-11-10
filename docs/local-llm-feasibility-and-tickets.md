@@ -252,3 +252,22 @@ LL-00 (tier) ────────┤
    ├─ LL-06 (mock)
    └─ LL-09 (citations — anytime)
 ```
+
+## Candidate model shortlist (pinned 2026-11-10 — figures indicative, verify in-spike per LL-09)
+
+**Classifier (agent-under-test)** — runtime vLLM, **named** `tool_choice` + xgrammar:
+
+| Tier | Model | Note |
+|---|---|---|
+| CI / floor | **Qwen3-8B** (non-thinking) | ~5.6 GB Q4; best multi-turn-per-param of any sub-14B open model |
+| Primary | **Qwen3-32B** (non-thinking) | recommended production classifier; dense-rubric following beats 8B |
+| Headroom | **Qwen2.5-72B-Instruct** | mature `hermes` tool parser, 128K context |
+| Wildcard | **gpt-oss-20B** (OpenAI open-weight — confirm existence / licence / vLLM parser) | the local model closest to the Codex / OpenAI lineage |
+
+**Judge (LL-04)** — must be a **different base-model family** from the classifier:
+- **Option 1 (hybrid):** pinned frontier judge (hosted) — no family conflict by construction.
+- **Option 3 (fully local):** the local judge family is **left open until LL-02** lands the classifier side. The binding rule is judge family != classifier family — so if the classifier lands on Qwen, the judge cannot be Qwen (incl. Qwen2.5), and vice-versa. Do **not** pre-commit a judge family; pick the local-judge candidate once LL-02 is in.
+
+**Excluded from the control path (LL-03):** Ollama (cannot force a tool call), Mistral Tekken v11+ (broken forced-call in vLLM). **TGI not adopted** (maintenance mode).
+
+**Verified vs indicative:** the exclusions and the vLLM named-call + xgrammar mechanism are verified from primary docs; all benchmark decimals, the kappa figures, and gpt-oss availability are **indicative** and must be verified in-spike (LL-09).
