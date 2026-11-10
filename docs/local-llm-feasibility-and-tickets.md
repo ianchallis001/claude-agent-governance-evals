@@ -167,6 +167,14 @@ Ticket ids `LL-##`. Dependencies into the `PP-##` provider-seam set.
 Pick the target: hybrid (local classifier, frontier judge), Inspect-routed, or
 fully air-gapped. Everything below scopes to the choice. Human sign-off.
 
+**Decision (DoD, 2026-11-10 — [ADR-0006](adr/ADR-0006-target-sovereignty-tier.md)):**
+target = **Option 3 (fully sovereign)**, named now; reached via a **stepping-stone
+1 → 3 gated by LL-04** (ship Option 1 first; graduate when LL-04 clears the
+per-dimension bar). **Option 2 is the wiring pattern, not a tier.** **Per-dimension
+partial sovereignty accepted** (cleared dimensions air-gapped; others stay on a
+frontier judge). Driver fixed sovereignty-primary at [ADR-0005](adr/ADR-0005-provider-portability-scope-and-product-thesis.md).
+Decision support: [`docs/sovereignty-tier-decision-support.md`](sovereignty-tier-decision-support.md).
+
 ### LL-01 — Local vLLM classifier spike (named-call constrained decoding)
 **Depends:** PP-01 · **Output:** a working `cage classify` run on local vLLM over a golden subset
 Stand up vLLM with Qwen3-32B; drive `cage`'s classifier through the

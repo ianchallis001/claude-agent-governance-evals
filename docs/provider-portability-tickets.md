@@ -55,6 +55,13 @@ vendor's agents), sovereignty/air-gap, or cost? Produce a one-page recommendatio
 and ADR-0005. Keep `cage` product-neutral (no consumer/client names). **This is a
 human sign-off, not a default-and-proceed.**
 
+**Decision (DoD, 2026-11-10 — [ADR-0005](adr/ADR-0005-provider-portability-scope-and-product-thesis.md)):**
+multi-provider is **in scope**; both axes portable but **staged** (agent-under-test
+first, judge second gated on LL-04); **primary driver = sovereignty** (reach is a
+delivered feature, cost secondary); product shape = **one codebase, two deployment
+topologies** (hybrid + sovereign). Decision support:
+[`docs/sovereignty-tier-decision-support.md`](sovereignty-tier-decision-support.md).
+
 ### PP-01 — Map the Anthropic coupling surface & design a `ProviderClient` interface
 **Type:** investigation · **Depends on:** PP-00 · **Output:** coupling inventory + proposed interface (structured)
 Turn the table above into a precise inventory: every call site, every response
