@@ -126,6 +126,32 @@ the cheapest path to breadth. Trade-off: it cedes the message-level call control
 may not survive Inspect's own solver/model abstraction. Recommend build (PP-02/03)
 vs reuse (Inspect) per axis.
 
+**Spike finding (DoD): hybrid.** Reuse Inspect's model layer for live provider
+breadth on both axes and stop hand-building per-provider wire adapters – Inspect
+already carries the ~29-provider adapter set (incl. `openai`, `bedrock`,
+`azureai`, `vllm`, `ollama`) that PP-02/PP-03 would otherwise duplicate
+([providers.html](https://inspect.aisi.org.uk/providers.html)) – but keep cage's
+control logic as cage's own.
+
+Per axis: the **agent-under-test** axis is hybrid – reuse Inspect for provider
+breadth, but keep cage's two-turn echo loop and `submit_classification` exit as a
+custom `@agent` solver that drives `get_model().generate()` + `execute_tools()`
+([agent-custom.html](https://inspect.aisi.org.uk/agent-custom.html)); the terminal
+forcing is approximated by loop-termination on the tool-call name rather than SDK
+forcing, which is acceptable because the intensity matrix, not the model's
+self-report, is authoritative. The **judge** axis is a near-clean reuse –
+Inspect's model-graded scorer plus `get_model(role="grader", required=True)` gives
+enforced family separation, with the forced-tool verdict re-expressed as
+`response_schema` structured output
+([model-graded.html](https://inspect.aisi.org.uk/model-graded.html),
+[structured.html](https://inspect.aisi.org.uk/structured.html)).
+
+Forward pointer: PP-02 and PP-03 should **not** hand-build the per-provider
+adapters; re-home that effort into (a) cage's loop as an Inspect solver and (b) the
+judge as an Inspect model-graded scorer, keeping cage's matrix/scoring and the
+`verdict_from_tool_input` range-check as the backstop. Full finding:
+`docs/inspect-route-build-vs-reuse.md`.
+
 ### PP-08 — Collectors subpackage provider-neutrality confirmation
 **Type:** investigation · **Depends on:** PP-01 · **Output:** short confirmation + any coupling found · **Effort:** low
 Confirm `collectors/{findings,assessment,annex_iii}` carry no hidden model
