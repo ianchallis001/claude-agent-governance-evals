@@ -223,6 +223,34 @@ family-separated local/remote grader — and whether the bespoke
 `inspect_tool`/`submit_classification` loop survives Inspect's solver/model
 abstraction. Run this early; it may replace much of LL-01's wiring.
 
+**Spike finding (DoD): hybrid (desk feasibility, not executed).** On the
+documentation the route holds: Inspect's built-in `vllm/` provider runs a local
+classifier ([providers.html](https://inspect.aisi.org.uk/providers.html)) and
+`--model-role grader=... required=True` enforces a family-separated grader that
+raises rather than falling back to the classifier model
+([model-graded.html](https://inspect.aisi.org.uk/model-graded.html)); the
+`inspect_tool` → `submit_classification` loop survives inside a custom `@agent`
+solver ([agent-custom.html](https://inspect.aisi.org.uk/agent-custom.html)). The
+`vllm/` provider effectively **is** the `OpenAICompatClient` seam LL-01 proposed to
+build, so that seam is likely not built but reused.
+
+The weak joint is the terminal forcing: named `tool_choice` forcing is **not**
+documented as reachable through Inspect's vLLM path and may be silently dropped, so
+cage's forced `submit_classification` and the judge's forced verdict must be
+rebuilt as constrained decoding – `guided_grammar`/`guided_regex` or
+`response_schema` via `extra_body`
+([structured.html](https://inspect.aisi.org.uk/structured.html)) – not as a forced
+named tool. **Hardware caveat:** no GPU/vLLM was available, so none of this was
+run; "the docs say supported" is not "verified by running it".
+
+Forward pointer: **LL-01** must run the classifier through the `vllm/` provider and
+confirm (a) whether named `tool_choice` reaches vLLM or is dropped and (b) whether
+guided decoding reproduces the forced-verdict control; **LL-02** must confirm the
+local model is capable of the two-turn loop and constrained decoding at the
+required quality. Adopt the Inspect route as the working hypothesis; fall back to a
+bespoke local adapter only if LL-01 shows the forced-verdict control cannot be
+reconstructed. Full finding: `docs/inspect-route-build-vs-reuse.md`.
+
 ### LL-08 — Air-gapped reference deployment & provenance
 **Depends:** LL-05 · **Output:** documented sovereign topology + an ingest/verify script
 Document and script the sovereign topology: `snapshot_download(revision=<sha>)` on
