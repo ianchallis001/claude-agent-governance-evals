@@ -10,6 +10,34 @@
 - **PP-07 — hybrid.** Reuse Inspect's model layer for live provider breadth across both axes – it already carries the ~29-provider adapter set cage would otherwise hand-build in PP-02/PP-03 – but keep cage's two-turn loop and its scoring as a custom Inspect solver, and re-express the judge as an Inspect model-graded scorer with a required grader role. Agent axis leans hybrid; judge axis is a near-clean reuse.
 - **LL-07 — hybrid.** The route is viable on the documentation: Inspect's built-in `vllm/` provider plus `--model-role grader=... required=True` can, in principle, drive the governance task with a local classifier and a family-separated grader, and the `inspect_tool` → `submit_classification` loop survives inside a custom solver. But the load-bearing control – forcing the terminal `submit_classification` call by name, and forcing the judge's typed verdict – is **not** documented as reachable through Inspect's vLLM path, so it must be rebuilt as guided/constrained decoding, and the whole route is unverified until LL-01 runs it on real hardware.
 
+## Update — offline PoC refines the "weak joint" (2026-11-10)
+
+A follow-on offline proof-of-concept (branch `feat/inspect-live-solver-poc`) wired
+cage's live two-turn loop as a custom Inspect `@solver` and the judge as a
+model-graded `@scorer`, and ran a real `inspect eval` against an offline mock model
+(455 passed / 1 skipped; the optional-dependency invariant held with `inspect_ai`
+absent). It sharpens one claim in the LL-07 finding below:
+
+- **Named tool forcing is not broadly unreachable.** Inspect's
+  `Model.generate(tool_choice=ToolFunction(name=...))` *does* expose named forcing
+  at the API surface, and the judge path uses it directly (with
+  `verdict_from_tool_input` as the backstop). The genuine open question is
+  narrower: whether a specific backend — notably the `vllm/` provider — *forwards*
+  that named choice to vLLM's endpoint. That is untested without hardware and is
+  **LL-01's** job. So where this document says named `tool_choice` forcing is "not
+  reachable through Inspect's vLLM path", read: *reachable in the Inspect API;
+  unproven only in vLLM backend forwarding*.
+- **`get_model(role="grader", required=True)` behaves exactly as documented** — it
+  raises `PrerequisiteError` rather than silently falling back to the model under
+  test, so judge/classifier family separation holds by construction.
+- The agent loop's terminal exit via **loop-termination on the
+  `submit_classification` tool name cleanly substitutes** for SDK-forced choice —
+  the authoritative intensity matrix, not the model's self-report, carries the real
+  control.
+
+The rest of the finding stands; the hardware-dependent questions remain open for
+LL-01/LL-02.
+
 ## What cage holds today (the coupling surface)
 
 cage's portable core and its coupled live paths are cleanly separable:
