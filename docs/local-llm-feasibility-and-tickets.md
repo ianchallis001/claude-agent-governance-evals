@@ -207,6 +207,36 @@ re-derive the abstain/noise-floor rule, pin temperature 0 + seed first, and add 
 a per-dimension verdict: which dimensions an open judge may serve and which must
 stay on a frontier model.
 
+**Protocol delivered (DoD, 2026-11-11).** The pre-registered study protocol for
+LL-04 is written and ground-truthed against the shipped code (`calibration.py`,
+`safety.py`) and the gold set (`calibration.json`, confirmed N = 12, single-author,
+synthetic). File: `docs/local-judge-calibration-study-protocol.md`.
+
+**Gate status: OPEN (unchanged).** Delivering the protocol does not close the
+decision gate. LL-04 stays OPEN pending the empirical run, which cannot start until
+LL-01 (#58), LL-02 (#59) and PP-04 (#52) land and a GPU is provisioned.
+
+**What the protocol settles:** the ticket's "gate each independently at 0.8" is
+reconciled against the shipped two-tier scheme – recommendation is to **keep
+two-tier** (`KAPPA_QUALITY` 0.60 / `KAPPA_SAFETY` 0.80), justified by per-dimension
+wrong-verdict consequence (EU AI Act Art. 15 / PRA SS1/23 Principle 3).
+
+**Headline caveat the reviewer must accept:** at N = 12 with 1–3 minority-class
+cases per safety dimension, the study is **screening-only** – it can return a no-go
+but cannot responsibly certify a go. A certifying run is gated behind gold-set
+expansion (#38) and a ≥ 2-labeller human pass. No kappa is claimed anywhere
+(LL-09).
+
+**Side finding worth the record:** under a coarse `claude-* → anthropic` family
+lookup the shipped frontier config (`claude-opus-5-5` judge over `claude-sonnet-5-5`
+agent) is itself a same-family pairing – a live self-preference confound the
+family-separation assertion would red-light. Documented in the protocol (§6.3,
+§7.1), scope decision referred to sign-off.
+
+**Open for human sign-off:** gate scheme, CI-lower-bound decision rule,
+`min_positive` floors, labeller count, R ≥ 20, bf16-vs-4-bit rig, GPU spend. See §9
+of the protocol.
+
 ### LL-05 — Local drift fingerprint & fail-on-change
 **Depends:** PP-05 · **Output:** extended `drift.py` fingerprint for local models
 Extend the drift fingerprint to the local schema (weight SHA256, quant, runtime +
