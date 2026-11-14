@@ -7,7 +7,7 @@
 
 ## Context
 
-The governance classifier has to be reachable by other agents and tools, not just
+The governance classifier has to be reachable by other agents and tools, not only
 by this repo's CLI. There are two very different ways to expose a
 governance capability to a fleet of agents:
 
@@ -44,14 +44,14 @@ concerns, and this ADR exists to pin it down:
 - **Classification and judgement are server-shaped.** "What is this agent's
   autonomy and blast radius, what governance intensity does that resolve to, and
   which named controls attach?" is a question with an answer. It is a
-  request/response capability other agents call - exactly the shape MCP exists to
-  serve - and it has to be free to say **unknown** / abstain (SPEC section 8)
+  request/response capability other agents call, exactly the shape MCP exists to
+  serve. It has to be free to say **unknown** / abstain (SPEC section 8)
   rather than be forced into a binary allow/deny on the hot path.
 
 Putting the classifier behind MCP keeps the probabilistic, calibrated,
-can-abstain part where abstention is safe - a judgement a caller
-reasons about - and keeps the deterministic, fail-closed part (enforcement)
-apart, since there the harness's readiness to abstain would be a liability.
+can-abstain part where abstention is safe, a judgement a caller
+reasons about. It keeps the deterministic, fail-closed part (enforcement)
+apart, where the harness's readiness to abstain would be a liability.
 
 ## Consequences
 

@@ -54,7 +54,7 @@ This is written down as an exception, not disguised as a review.
 - **What it does NOT replace.** A second pair of eyes on **design judgement,
   label quality, and blind spots**. CI cannot tell me my rubric is wrong,
   that my synthetic manifests are unrepresentative, or that a human verdict I
-  wrote is miscalibrated - the very single-author weaknesses listed as
+  wrote is miscalibrated. Those are the very single-author weaknesses listed as
   limits in the [README](../../README.md) and [DATASET.md](../../DATASET.md). The
   substitution closes the *regression* half of peer review, not the *judgement*
   half.

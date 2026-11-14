@@ -6,18 +6,18 @@ Two questions sit under any attempt to govern an AI agent: is it governed to the
 standard the organisation deploying it must meet, and can you trust the assessment
 enough to act on it?
 
-For a regulated firm, this is the whole point. A `cage` run does not just produce a
-score - it produces a **control-mapped assessment**: every judgement is tied to a
+For a regulated firm, this is the whole point. A `cage` run produces a
+**control-mapped assessment**, not just a score. Every judgement is tied to a
 named clause in the standard the firm answers to (the EU AI Act, ISO/IEC 42001, the
-PRA's SS1/23 or the US SR 11-7), scoped to the jurisdictions that actually apply
-(UK, EU, US). That is what a model-risk or compliance function actually needs - a
-control map it can act on, not a number it then has to translate into controls.
+PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
+(UK, EU, US). That is the control map a model-risk or compliance function needs:
+one it can act on, not a number it then has to translate into controls.
 
-`cage` produces it by reading the agent's list of tools: it works out how much
+`cage` produces it by reading the agent's list of tools. It works out how much
 autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
 sets the governance intensity that combination demands, and attaches the controls
-that come with it - scoped by jurisdiction or by named framework, so the run cites
-the clauses in force for that deployment.
+that come with it. Those controls are scoped by jurisdiction or by named framework,
+so the run cites the clauses in force for that deployment.
 
 The second question is the harder one, and the reason the project exists. An
 assessment is only worth acting on if the thing that produced it has been checked.
@@ -106,11 +106,11 @@ real-time human stop) and PRA SS1/23 Principle 5. Scope it to one region - say
 
 ## Comparing models
 
-`cage compare` runs the **identical** evaluation - the same golden dataset, the
-same seven scorers, the same gate - across a set of candidate agent models, and
-lays the per-dimension scores out as a matrix: one row per dimension (plus the
-overall gate), one column per model, and a trailing **delta** column showing
-where the models diverge.
+`cage compare` runs the **identical** evaluation across a set of candidate agent
+models: the same golden dataset, the same seven scorers, the same gate. It lays the
+per-dimension scores out as a matrix - one row per dimension (plus the overall
+gate), one column per model, and a trailing **delta** column showing where the
+models diverge.
 
 ```bash
 cage compare --mock                                  # the current-generation set
@@ -151,9 +151,9 @@ claude-opus-5-5  (mock)  gate PASS  exit 0
 
 Offline (`--mock`), the deterministic safety gates (dangerous-miss, HITL,
 manifest-integrity, drift) are identical across models, and the quality rows vary
-by a fixed, reproducible per-model perturbation - clearly labelled `(mock)`, a
-harness fixture, never a claim about any model's real quality. **Live** mode
-(behind `ANTHROPIC_API_KEY`) drives each candidate model live.
+by a fixed, reproducible per-model perturbation. That perturbation is clearly
+labelled `(mock)`: a harness fixture, never a claim about any model's real quality.
+**Live** mode (behind `ANTHROPIC_API_KEY`) drives each candidate model live.
 
 **Exit code.** `cage compare` exits `0` when every compared model PASSes. It goes
 non-zero exactly when a selected model **falls below `--threshold`** (the runner
@@ -287,8 +287,8 @@ shown to satisfy.
 
 `GLOBAL` (ISO/IEC 42001) is a baseline that is always included under a regional
 selection. UK GDPR deliberately mirrors EU GDPR's article numbering (same Art. 5,
-22, 25, 32, 35); the divergence that matters for a *data-residency* control is the
-international-transfer route - EU GDPR Chapter V relies on adequacy and the EU
+22, 25, 32, 35). The divergence that matters for a *data-residency* control is the
+international-transfer route: EU GDPR Chapter V relies on adequacy and the EU
 SCCs, UK GDPR on the ICO's IDTA / UK Addendum.
 
 ### Select by region

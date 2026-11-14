@@ -18,8 +18,8 @@ the **target sovereignty tier** and the path to it, from three options:
   The classifier is a today-capability (constrained decoding, finding A); the judge
   is validated by construction. Not air-gapped. Low-medium effort.
 - **Option 2 - Inspect-routed:** both roles via UK AISI Inspect's model layer. The
-  PP-07/LL-07 spikes resolved this *hybrid/reuse* - Inspect's `vllm/` provider
-  effectively **is** the provider seam - so it is best read as a **wiring pattern**
+  PP-07/LL-07 spikes resolved this *hybrid/reuse*: Inspect's `vllm/` provider
+  effectively **is** the provider seam. It is best read as a **wiring pattern**
   beneath Options 1 and 3, not a product tier. Low effort (a spike).
 - **Option 3 - Fully sovereign:** both roles on local open-weight models, fully
   air-gapped. Full residency; load-bearing on LL-04 per-dimension calibration
@@ -38,8 +38,8 @@ call), Mistral Tekken v11+ (broken forced-call in vLLM); TGI not adopted
 **Target state: Option 3 - the fully sovereign, air-gapped appliance - named now.**
 The destination is stated rather than held conditional, to put real pull behind the
 LL-04 gate. The defensible public statement is that the per-dimension agreement bar
-**will be established by LL-04, a planned empirical gate - not a projected
-benchmark**; no kappa decimal is claimed until LL-09 closes.
+**will be established by LL-04, a planned empirical gate, not a projected
+benchmark**. No kappa decimal is claimed until LL-09 closes.
 
 **Path: a stepping-stone 1 -> 3, gated by LL-04.**
 

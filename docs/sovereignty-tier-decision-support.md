@@ -101,7 +101,7 @@ Move the classifier onto local open weights (vLLM named-call + xgrammar constrai
 
 ### Option 2 – Inspect-routed (both roles through UK AISI Inspect's model layer)
 
-Route the classifier via Inspect's built-in `vllm/` provider and the judge via `--model-role grader=... required=True`. Now that PP-07/LL-07 has resolved hybrid/reuse, read this **not as a distinct destination but as a low-cost wiring vehicle**: Inspect's `vllm/` provider effectively *is* the `OpenAICompatClient` seam, so this route delivers Option 1's shape (and the classifier half of Option 3) cheaply, with one load-bearing control – named tool forcing – that must be rebuilt as guided decoding and proven on hardware.
+Route the classifier via Inspect's built-in `vllm/` provider and the judge via `--model-role grader=... required=True`. Now that PP-07/LL-07 has resolved hybrid/reuse, read this **not as a distinct destination but as a low-cost wiring vehicle**. Inspect's `vllm/` provider effectively *is* the `OpenAICompatClient` seam, so this route delivers Option 1's shape (and the classifier half of Option 3) cheaply. One load-bearing control, named tool forcing, must be rebuilt as guided decoding and proven on hardware.
 
 **Pros**
 - Cheapest path to live multi-provider wiring – reuses ~29 Inspect adapters instead of CAGE owning per-provider wire code.
