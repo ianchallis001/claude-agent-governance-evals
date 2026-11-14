@@ -359,8 +359,12 @@ no MCP dependency at all
 ### Running it
 
 ```bash
-pip install -e .[mcp]          # installs mcp[cli] >= 2.0 (MCPServer API)
-python -m cage.mcp_server      # serve over stdio; blocks until the client disconnects
+pip install "claude-agent-governance-evals[mcp]"   # from PyPI (installs mcp[cli] >= 2.0)
+cage-mcp                                            # serve over stdio; blocks until the client disconnects
+
+# or from a source checkout:
+pip install -e .[mcp]
+python -m cage.mcp_server
 ```
 
 The server talks over the **stdio transport**: stdout is the JSON-RPC channel and
@@ -371,10 +375,19 @@ it into an MCP-aware client, point the client at that command - for example:
 ```json
 {
   "mcpServers": {
-    "cage-governance": { "command": "python", "args": ["-m", "cage.mcp_server"] }
+    "cage-governance": { "command": "cage-mcp" }
   }
 }
 ```
+
+### Publishing & identity
+
+The MCP server's registry identity is `io.github.ianchallis001/cage-governance-classifier`
+(PyPI package `claude-agent-governance-evals`). The Official MCP Registry verifies ownership
+against the string below appearing in the PyPI description. Publication itself is tracked under
+milestone *M7 - MCP server publication* and is a deliberate, maintained step - not yet live:
+
+mcp-name: io.github.ianchallis001/cage-governance-classifier
 
 Every tool call runs the **pure-stdlib deterministic classifier**
 (`cage.classify.classify_manifest`), so the server needs no Anthropic client, no

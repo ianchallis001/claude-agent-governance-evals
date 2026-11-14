@@ -1,6 +1,6 @@
 [project]
 name = "claude-agent-governance-evals"
-version = "0.1.0"
+version = "0.2.0"
 description = "A regulator-grounded evaluation harness and governance classifier for Claude tool-use agents."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,7 @@ dev = [
 
 [project.scripts]
 cage = "cage.cli:main"
+cage-mcp = "cage.mcp_server:main"
 
 [build-system]
 requires = ["hatchling"]

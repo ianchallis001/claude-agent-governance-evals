@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-05
 - **Deciders:** Ian Challis (single-author repo; see ADR-0003)
-- **Context tickets:** P2-03 (`server.py`)
+- **Context tickets:** P2-03 (`mcp_server.py`)
 
 ## Context
 
@@ -24,7 +24,7 @@ production traffic.
 
 ## Decision
 
-Publish the classifier as an **MCP server** (`cage.server`, ticket P2-03) that
+Publish the classifier as an **MCP server** (`cage.mcp_server`, ticket P2-03) that
 exposes a `classify_manifest` tool over stdio, with the `mcp` package imported
 **lazily** only inside that entrypoint. The server **classifies and judges**; it
 does **not** enforce. Enforcement - blocking a tool call, demanding an approval,
@@ -59,7 +59,7 @@ apart, since there the harness's readiness to abstain would be a liability.
   callable judgement service; it can abstain honestly; it carries no
   critical-path latency or fail-closed duties it cannot meet; and the `mcp`
   dependency stays optional and lazily imported, so the rest of `cage` and the full
-  test suite import without it (`tests/test_server.py::test_module_imports_without_mcp`).
+  test suite import without it (`tests/test_mcp_server.py::test_module_imports_without_mcp`).
 - **Negative / trade-off.** On its own, this server **cannot stop a dangerous
   action** - it can only classify and judge one. A real deployment still needs an
   enforcement layer, and the two have to be wired together: the gateway calls the
