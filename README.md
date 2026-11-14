@@ -2,13 +2,18 @@
 
 ## What cage is for
 
-`cage` assesses how well an AI agent is governed, and checks that the assessment
-can be trusted enough to act on.
+In plain terms: when an organisation lets an AI agent take actions on its own, regulators and
+internal risk teams expect evidence that the agent is properly supervised. `cage` is a command-line
+tool. It reads what an agent is allowed to do, works out how risky that is, and produces a report
+that ties each judgement to the specific rule it has to meet. It then checks that the report itself
+can be trusted before anyone relies on it. It is for the engineers and the risk or compliance teams
+who have to make that case, and it runs on your own machine, with no account and no internet
+connection.
 
 A `cage` run produces a **control-mapped assessment**: every judgement is tied to a
-named clause in the standard the firm answers to (the EU AI Act, ISO/IEC 42001, the
-PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
-(UK, EU, US).
+named clause in the standard the firm answers to - the main AI and model-risk rules in the UK, EU
+and US (the EU AI Act, ISO/IEC 42001, the PRA's SS1/23 or the US SR 11-7) - and scoped to the
+jurisdictions that actually apply (UK, EU, US).
 
 `cage` produces it by reading the agent's list of tools. It works out how much
 autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
@@ -39,6 +44,14 @@ citations, no API key and no network.
 > and summarised under [What's next](#whats-next) below. This is an
 > **offline-tested reference harness, not a shipped product**. Please read the limits
 > section near the end before you quote any number from here.
+
+**A few terms.** *Control* - a specific safeguard a regulation or standard requires (for example a
+human stop button). *Manifest* - the agent's declared list of tools and what each one can do.
+*LLM judge* - a second AI model used to grade the first; `cage` only trusts it after measuring it
+against human decisions. *Cohen's kappa* - an agreement score that removes the credit you would get
+by guessing, so a judge that passes everything scores zero. *Governance intensity* - how much
+oversight an agent needs, graded LOW / MODERATE / HIGH / CRITICAL. *Human-in-the-loop (HITL)* - a
+person who must approve, or can override, what the agent does.
 
 ---
 
@@ -446,7 +459,7 @@ deliberate, and it is written up in
 - **Classification and judgement are the right shape for a server.** "What is this
   agent's autonomy and blast radius, what governance intensity does that resolve
   to, and which controls attach?" is a question with an answer - a
-  request/response capability other agents call, which is exactly what MCP is for.
+  request/response capability other agents call, which is what MCP is for.
   It also has to be free to answer **unknown / abstain** (SPEC section 8) rather
   than be forced into a yes/no on the hot path. So the classifier sits behind MCP
   and enforcement does not: the classifier can abstain, while enforcement must be
@@ -480,7 +493,7 @@ protocol-level check that did run.
 ## Inspect AI
 
 [Inspect](https://inspect.aisi.org.uk/) is the UK AI Safety Institute's
-evaluation framework and the reference others are measured against. The harness
+evaluation framework. The harness
 has had its Task = Dataset + Solver + Scorer shape from the start;
 `cage.inspect_adapter` runs the same governance eval on Inspect's own runtime,
 logged to Inspect's log viewer and orchestrated by `eval_set` if you want it.
