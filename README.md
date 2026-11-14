@@ -2,16 +2,14 @@
 
 ## What cage is for
 
-Two questions sit under any attempt to govern an AI agent: is it governed to the
-standard the organisation deploying it must meet, and can you trust the assessment
-enough to act on it?
+`cage` assesses how well an AI agent is governed, and checks that the assessment
+can be trusted enough to act on.
 
-For a regulated firm, this is the whole point. A `cage` run produces a
-**control-mapped assessment**, not just a score. Every judgement is tied to a
-named clause in the standard the firm answers to (the EU AI Act, ISO/IEC 42001, the
-PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
-(UK, EU, US). That is the control map a model-risk or compliance function needs:
-one it can act on, not a number it then has to translate into controls.
+A `cage` run produces a **control-mapped assessment**, not just a score. Every
+judgement is tied to a named clause in the standard the firm answers to (the EU AI
+Act, ISO/IEC 42001, the PRA's SS1/23 or the US SR 11-7), and scoped to the
+jurisdictions that actually apply (UK, EU, US). That is the control map a model-risk
+or compliance function needs.
 
 `cage` produces it by reading the agent's list of tools. It works out how much
 autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
@@ -19,10 +17,9 @@ sets the governance intensity that combination demands, and attaches the control
 that come with it. Those controls are scoped by jurisdiction or by named framework,
 so the run cites the clauses in force for that deployment.
 
-The second question is the harder one, and the reason the project exists. An
-assessment is only worth acting on if the thing that produced it has been checked.
-So wherever `cage` relies on an LLM judge, it will not let that judge decide
-anything until it has been measured against human labels. It:
+The harder part is trusting the assessment. Wherever `cage` relies on an LLM judge,
+it will not let that judge decide anything until it has been measured against human
+labels. It:
 
 - scores each judge against human labels with **Cohen's kappa**, not raw accuracy
 - withholds a verdict when the result sits inside the judge's own noise
@@ -30,14 +27,14 @@ anything until it has been measured against human labels. It:
   cancel
 - fails the whole run if the model version has moved underneath it
 
-That combination is the gap it fills. Eval frameworks run the tests but usually
-trust the judge and average the scores, so a single safety failure can be
-outvoted. Governance platforms map models to regulations, but at the level of
-policy and documentation, not an executable check you can run against an actual
-agent. `cage` does both at once, and runs fully offline - a `git clone` takes you
-to a full scorecard with control citations, no API key and no network.
+Many eval frameworks run the tests but trust the judge and average the scores, so a
+single safety failure can be outvoted. Governance platforms map models to
+regulations, but at the level of policy and documentation, not an executable check
+you can run against an actual agent. `cage` does both at once, and runs fully
+offline. A `git clone` takes you to a full scorecard with control citations, no API
+key and no network.
 
-> **Status (honest).** The harness, the CLI, the datasets (`data/golden.json`,
+> **Status.** The harness, the CLI, the datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are all built and tested: 440 tests,
 > all offline, including strict-mode manifest validation with a pinpointing error
 > taxonomy, a malformed-manifest fixture suite, and the collector assessment layer
@@ -46,9 +43,8 @@ to a full scorecard with control citations, no API key and no network.
 > defensible evaluation - is tracked openly as
 > [GitHub issues and milestones](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
 > and summarised under [What's next](#whats-next) below. This is an
-> **offline-tested reference harness, not a shipped product** - the limits section
-> near the end is deliberate, and worth reading before you quote any number from
-> here.
+> **offline-tested reference harness, not a shipped product**. Read the limits
+> section near the end before you quote any number from here.
 
 ---
 
@@ -770,5 +766,4 @@ gateway (ADR-0002), and the single-author DoD adaptation (ADR-0003).
 
 ---
 
-_Author: Ian Challis. Offline reference harness - read the limits section before
-citing any number from it._
+_Author: Ian Challis._
