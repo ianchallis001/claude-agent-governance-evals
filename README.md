@@ -3,7 +3,7 @@
 ## What cage is for
 
 In plain terms: when an organisation lets an AI agent take actions on its own, regulators and
-internal risk teams expect evidence that the agent is properly supervised. `cage` is a command-line
+internal risk teams expect evidence that the agent is actually supervised. `cage` is a command-line
 tool. It reads what an agent is allowed to do, works out how risky that is, and produces a report
 that ties each judgement to the specific rule it has to meet. It then checks that the report itself
 can be trusted before anyone relies on it. It is for the engineers and the risk or compliance teams
@@ -11,9 +11,9 @@ who have to make that case, and it runs on your own machine, with no account and
 connection.
 
 A `cage` run produces a **control-mapped assessment**: every judgement is tied to a
-named clause in the standard the firm answers to - the main AI and model-risk rules in the UK, EU
-and US (the EU AI Act, ISO/IEC 42001, the PRA's SS1/23 or the US SR 11-7) - and scoped to the
-jurisdictions that actually apply (UK, EU, US).
+named clause in the AI and model-risk standards the firm answers to (the EU AI Act, ISO/IEC 42001,
+the PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
+(UK, EU, US).
 
 `cage` produces it by reading the agent's list of tools. It works out how much
 autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
@@ -48,8 +48,7 @@ citations, no API key and no network.
 **A few terms.** *Control* - a specific safeguard a regulation or standard requires (for example a
 human stop button). *Manifest* - the agent's declared list of tools and what each one can do.
 *LLM judge* - a second AI model used to grade the first; `cage` only trusts it after measuring it
-against human decisions. *Cohen's kappa* - an agreement score that removes the credit you would get
-by guessing, so a judge that passes everything scores zero. *Governance intensity* - how much
+against human decisions. *Cohen's kappa* - an agreement score that discounts what chance alone would produce, so a judge that passes everything scores zero. *Governance intensity* - how much
 oversight an agent needs, graded LOW / MODERATE / HIGH / CRITICAL. *Human-in-the-loop (HITL)* - a
 person who must approve, or can override, what the agent does.
 
