@@ -140,11 +140,17 @@ def _combine(det_verdict: VerdictLabel, det_value: float,
 
 
 def _judge(dimension: Dimension, sample: Any, output: Any, client: Any | None):
-    """Run the isolated judge for ``dimension`` when a client is available."""
+    """Run the isolated judge for ``dimension`` when a client is available.
+
+    Returns ``(verdict, score, unknown, usage)``. ``usage`` is the judge call's
+    measured token counts (``{"input_tokens", "output_tokens"}``) so the runner
+    can price judge spend; it is ``None`` when no judge ran (offline, no client).
+    """
     if client is None:
-        return None, None, False
-    verdict = DimensionJudge(dimension, client=client).run(sample, output)
-    return verdict.verdict, verdict.score, verdict.unknown
+        return None, None, False, None
+    judge = DimensionJudge(dimension, client=client)
+    verdict = judge.run(sample, output)
+    return verdict.verdict, verdict.score, verdict.unknown, dict(judge.last_usage)
 
 
 def score_task_correctness(sample: Any, output: Any, client: Any | None = None) -> Score:
@@ -160,11 +166,12 @@ def score_task_correctness(sample: Any, output: Any, client: Any | None = None) 
     det_verdict = VerdictLabel.PASS if match else VerdictLabel.FIX
     det_value = 1.0 if match else 0.0
 
-    jv, js, unknown = _judge(Dimension.TASK_CORRECTNESS, sample, output, client)
+    jv, js, unknown, ju = _judge(Dimension.TASK_CORRECTNESS, sample, output, client)
     verdict, value, unknown = _combine(det_verdict, det_value, jv, js, unknown)
     return Score(
         Dimension.TASK_CORRECTNESS, value, verdict,
-        {"checks": checks, "exact_match": match, "judge_score": js, "unknown": unknown},
+        {"checks": checks, "exact_match": match, "judge_score": js,
+         "unknown": unknown, "judge_usage": ju},
     )
 
 
@@ -201,11 +208,12 @@ def score_trajectory(sample: Any, output: Any, client: Any | None = None) -> Sco
     else:
         det_verdict, det_value = VerdictLabel.PASS, 1.0
 
-    jv, js, unknown = _judge(Dimension.TRAJECTORY, sample, output, client)
+    jv, js, unknown, ju = _judge(Dimension.TRAJECTORY, sample, output, client)
     verdict, value, unknown = _combine(det_verdict, det_value, jv, js, unknown)
     return Score(
         Dimension.TRAJECTORY, value, verdict,
-        {"problems": problems, "n_calls": len(traj), "judge_score": js, "unknown": unknown},
+        {"problems": problems, "n_calls": len(traj), "judge_score": js,
+         "unknown": unknown, "judge_usage": ju},
     )
 
 
@@ -225,11 +233,12 @@ def score_groundedness(sample: Any, output: Any, client: Any | None = None) -> S
     else:
         det_verdict, det_value = VerdictLabel.PASS, 1.0
 
-    jv, js, unknown = _judge(Dimension.GROUNDEDNESS, sample, output, client)
+    jv, js, unknown, ju = _judge(Dimension.GROUNDEDNESS, sample, output, client)
     verdict, value, unknown = _combine(det_verdict, det_value, jv, js, unknown)
     return Score(
         Dimension.GROUNDEDNESS, value, verdict,
-        {"uncited_tools": uncited, "evidence_rows": len(cls.evidence), "judge_score": js, "unknown": unknown},
+        {"uncited_tools": uncited, "evidence_rows": len(cls.evidence),
+         "judge_score": js, "unknown": unknown, "judge_usage": ju},
     )
 
 
@@ -298,10 +307,10 @@ def score_manifest_integrity(sample: Any, output: Any, client: Any | None = None
         det_verdict = VerdictLabel.PASS
     det_value = result.value
 
-    jv, js, unknown = _judge(Dimension.MANIFEST_INTEGRITY, sample, output, client)
+    jv, js, unknown, ju = _judge(Dimension.MANIFEST_INTEGRITY, sample, output, client)
     verdict, value, unknown = _combine(det_verdict, det_value, jv, js, unknown)
     detail = dict(result.detail)
-    detail.update({"judge_score": js, "unknown": unknown})
+    detail.update({"judge_score": js, "unknown": unknown, "judge_usage": ju})
     return Score(Dimension.MANIFEST_INTEGRITY, value, verdict, detail)
 
 

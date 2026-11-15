@@ -23,6 +23,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 # Agent under test: the governance classifier runs on Sonnet.
 AGENT_MODEL = "claude-sonnet-5-5"
@@ -132,6 +133,41 @@ def model_spec(model: str) -> ModelSpec | None:
     the catalogue does not carry, and the matrix simply omits its context/price.
     """
     return MODEL_SPECS.get(model)
+
+
+def cost_usd_for(model: str, input_tokens: int, output_tokens: int) -> float:
+    """USD cost of one call's measured token usage at first-party API rates.
+
+    Prices come from :data:`MODEL_SPECS` (USD per million tokens, input / output).
+    An **unknown** model id contributes ``0.0`` rather than a guessed price: the
+    catalogue does not carry its rate, so the honest reported spend simply does
+    not accrue for it (the drift gate, not the budget, is what guards an
+    off-catalogue model). Negative token counts are clamped to zero.
+    """
+    spec = MODEL_SPECS.get(model)
+    if spec is None:
+        return 0.0
+    in_tok = max(0, int(input_tokens))
+    out_tok = max(0, int(output_tokens))
+    return (
+        in_tok / 1_000_000 * spec.input_usd_per_mtok
+        + out_tok / 1_000_000 * spec.output_usd_per_mtok
+    )
+
+
+def accrue_usage(acc: dict[str, int], response: Any) -> None:
+    """Add one response's token usage into ``acc`` in place.
+
+    ``acc`` carries ``input_tokens`` / ``output_tokens`` running totals. This is
+    deliberately defensive: a response with no ``usage`` object (an offline mock
+    that omits it, say) contributes nothing rather than raising, so the live
+    accounting path and the offline suites share one code path.
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    acc["input_tokens"] = acc.get("input_tokens", 0) + int(getattr(usage, "input_tokens", 0) or 0)
+    acc["output_tokens"] = acc.get("output_tokens", 0) + int(getattr(usage, "output_tokens", 0) or 0)
 
 
 def model_fingerprint(

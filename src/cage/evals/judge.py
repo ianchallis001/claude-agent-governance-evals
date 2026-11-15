@@ -28,7 +28,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
-from cage.models import JUDGE_MODEL
+from cage.models import JUDGE_MODEL, accrue_usage
 from cage.regmap import Dimension
 
 # Response ceiling for a judging turn. A verdict is a single small tool call, so
@@ -278,6 +278,10 @@ class DimensionJudge:
         self.dimension = dimension
         self.model = model
         self._client = client
+        # Token usage of the most recent run() call. The scorer forwards this to
+        # the runner, which prices it against the judge model so --max-cost-usd
+        # counts judge spend as well as agent spend. Reset per run() call.
+        self.last_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
 
     @property
     def client(self) -> Any:
@@ -312,6 +316,7 @@ class DimensionJudge:
         call from the agent under test. Ticket: P1-06.
         """
         prompt = build_judge_prompt(self.dimension, sample, transcript)
+        self.last_usage = {"input_tokens": 0, "output_tokens": 0}
         response = self.client.messages.create(
             model=self.model,
             max_tokens=_MAX_TOKENS,
@@ -320,6 +325,7 @@ class DimensionJudge:
             tool_choice={"type": "tool", "name": RECORD_VERDICT_TOOL_NAME},
             messages=[{"role": "user", "content": prompt}],
         )
+        accrue_usage(self.last_usage, response)
         return self._parse(response)
 
     def _parse(self, response: Any) -> Verdict:
