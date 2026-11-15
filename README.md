@@ -79,6 +79,11 @@ The runtime is **Python standard library only**. The `anthropic` SDK is imported
 lazily, and only on the live-API path; `mcp` is imported lazily, and only inside
 the server. So the mock suite and every unit test need nothing beyond `pytest`.
 
+The default offline path makes no network calls, so no data leaves your machine and
+there is no residency question to answer. The only outbound calls are on the
+live-API path; they go to Anthropic (US), and there is no UK-pinned Claude
+inference, so make no UK-residency claim for that path.
+
 ---
 
 ## What it evaluates
