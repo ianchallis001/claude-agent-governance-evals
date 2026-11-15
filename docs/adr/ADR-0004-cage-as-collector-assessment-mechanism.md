@@ -18,8 +18,8 @@ that fails on change, and a reproducibility check.
 
 In that platform, and in such pipelines generally, the intent was **design-only**.
 Nothing in code enforced or even measured it. A synthesiser could emit a rating
-that no finding supports, could silently change when its prompt template or model
-moved, and could give a different answer on a second run, and nothing would flag
+that no finding supports. It could silently change when its prompt template or
+model moved. It could give a different answer on a second run. Nothing would flag
 any of it before the output reached a customer.
 
 CAGE already contains the right parts: a pin-and-fingerprint drift gate
@@ -31,8 +31,8 @@ rows (`cage.classify`, `cage.regmap`).
 ## Decision
 
 **CAGE provides a general assessment-governance mechanism that any findings-based
-pipeline can call.** It is a product in its own right: the pipeline, its findings,
-and the assessments it produces belong to whoever runs it - CAGE is the mechanism
+pipeline can call.** It is a product in its own right. The pipeline, its findings,
+and the assessments it produces belong to whoever runs it. CAGE is the mechanism
 they call, not the owner of their work. It provides, as an offline, stdlib-only
 library under `cage.collectors`:
 
@@ -89,8 +89,8 @@ mechanism now exists and is tested.
 - **Negative / trade-off.** Anchoring proves a rating *cites* a real finding, not
   that the finding *supports* the rating; a semantic-support judge would be an LLM
   call and is out of scope here. Reproducibility is compared on supplied
-  derivations; this repo does not run the synthesiser. The mechanism protects a
-  pipeline nothing until that pipeline wires it in.
+  derivations; this repo does not run the synthesiser. The mechanism protects
+  nothing in a pipeline until that pipeline wires it in.
 - **Boundary.** This work changes only the CAGE repository; no consumer pipeline
   is modified. CAGE holds no customer data: the adapter reads a pack path the
   caller supplies and is read-only.

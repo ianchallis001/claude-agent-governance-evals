@@ -32,9 +32,9 @@ grade a bounded rubric well enough." The research answers both.
 ### A. Can a local model hold the forced-tool-call loop? — **Yes, via constrained decoding**
 
 The make-or-break mechanism is **vLLM's named-tool-call path** with structural-tag
-/ xgrammar constrained decoding: with `tool_choice` set to a named function, free
+/ xgrammar constrained decoding. With `tool_choice` set to a named function, free
 text, hallucinated tool names, and wrong-type fields are blocked at the token
-mask — the model *cannot* emit anything but a schema-valid call to that function.
+mask. The model *cannot* emit anything but a schema-valid call to that function.
 This is exactly `cage`'s forced-call design.
 ([vLLM tool calling](https://docs.vllm.ai/en/latest/features/tool_calling.html),
 [vLLM structured outputs](https://docs.vllm.ai/en/latest/features/structured_outputs.html))
@@ -49,9 +49,9 @@ This is exactly `cage`'s forced-call design.
   [Qwen function calling](https://qwen.readthedocs.io/en/latest/framework/function_call.html))
 - **Important limit:** constrained decoding enforces *syntactic* schema (field
   names, JSON types) but **not** semantic value ranges (the float-in-[0,1] score).
-  `cage` already has the backstop — `verdict_from_tool_input()` range-validates and
-  raises — so the architecture is to keep that check and allow one schema-repair
-  retry fed back as a `tool_result`.
+  `cage` already has the backstop: `verdict_from_tool_input()` range-validates and
+  raises. So the architecture is to keep that check and allow one schema-repair
+  retry, fed back as a `tool_result`.
 
 **Hard exclusions (encode as a runtime/model allow-list):**
 - **Ollama cannot force a tool call** — it is a listed future feature; `format`
@@ -68,9 +68,9 @@ This is exactly `cage`'s forced-call design.
 ### B. Can a local model be the *judge*? — **Conditional; this is the real gate**
 
 The judge is the scientific heart and the kappa 0.8 bar is tight.
-- A 70B-class open judge *can* clear 0.8 on an easy, well-specified rubric but can
-  fall far below it on a harder one — **kappa deflation is universal** and
-  per-dimension, so a judge must be validated *per `cage` dimension against the
+- A 70B-class open judge *can* clear 0.8 on an easy, well-specified rubric, and can
+  fall far below it on a harder one. **Kappa deflation is universal** and
+  per-dimension. So a judge must be validated *per `cage` dimension against the
   human gold set*, never in aggregate.
 - **Self-preference is maximal when the judge is the agent-under-test**, and
   **same-family bias inflates agreement** even across different checkpoints of one
@@ -79,9 +79,9 @@ The judge is the scientific heart and the kappa 0.8 bar is tight.
   assertion** (judge base-model family != agent base-model family).
 - **Inspect gives this for free:** it can route both roles to local/OpenAI-
   compatible providers (`vllm/<id>`, `ollama/<id>`, `openai-api/<provider>/<id>`),
-  and the grader is set with `--model-role grader=...`; passing
+  and the grader is set with `--model-role grader=...`. Passing
   `ModelRole("grader", required=True)` **hard-blocks the fallback to the agent's
-  own model** — the exact failure `cage` must prevent. Determinism guidance:
+  own model**, the exact failure `cage` must prevent. Determinism guidance:
   `temperature=0` + fixed `seed`.
   ([Inspect models](https://inspect.aisi.org.uk/models.html),
   [Inspect model-graded](https://inspect.aisi.org.uk/model-graded.html))
@@ -283,7 +283,7 @@ run; "the docs say supported" is not "verified by running it".
 
 Forward pointer: **LL-01** must run the classifier through the `vllm/` provider and
 confirm (a) whether named `tool_choice` reaches vLLM or is dropped and (b) whether
-guided decoding reproduces the forced-verdict control; **LL-02** must confirm the
+guided decoding reproduces the forced-verdict control. **LL-02** must confirm the
 local model is capable of the two-turn loop and constrained decoding at the
 required quality. Adopt the Inspect route as the working hypothesis; fall back to a
 bespoke local adapter only if LL-01 shows the forced-verdict control cannot be

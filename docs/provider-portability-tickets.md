@@ -143,9 +143,9 @@ control logic as cage's own.
 Per axis: the **agent-under-test** axis is hybrid – reuse Inspect for provider
 breadth, but keep cage's two-turn echo loop and `submit_classification` exit as a
 custom `@agent` solver that drives `get_model().generate()` + `execute_tools()`
-([agent-custom.html](https://inspect.aisi.org.uk/agent-custom.html)); the terminal
+([agent-custom.html](https://inspect.aisi.org.uk/agent-custom.html)). The terminal
 forcing is approximated by loop-termination on the tool-call name rather than SDK
-forcing, which is acceptable because the intensity matrix, not the model's
+forcing. That is acceptable because the intensity matrix, not the model's
 self-report, is authoritative. The **judge** axis is a near-clean reuse –
 Inspect's model-graded scorer plus `get_model(role="grader", required=True)` gives
 enforced family separation, with the forced-tool verdict re-expressed as

@@ -13,8 +13,8 @@
 CAGE classifies and judges AI-agent governance against a control catalogue it
 supplies itself (`regmap`: EU AI Act, GDPR, ISO 42001, NIST AI RMF, PRA SS1/23,
 SR 11-7). The M5 provider seam (PP-01) makes CAGE runnable on a non-Anthropic
-provider; the PP-07/LL-07 spikes (ADR follow-on) found that UK AISI Inspect's
-model layer - in particular its `vllm/` provider - can supply most of that seam
+provider. The PP-07/LL-07 spikes (ADR follow-on) found that UK AISI Inspect's
+model layer, in particular its `vllm/` provider, can supply most of that seam
 by reuse rather than hand-built adapters. Before scoping adapter work, PP-00
 fixes the **product thesis**, not the architecture.
 
@@ -46,9 +46,9 @@ before a local judge is trusted.
 
 **(c) Primary driver - sovereignty.** CAGE is a **sovereign governance appliance
 by design**. Cross-vendor **reach is a feature the seam delivers**, not a
-competing thesis; **cost is a secondary benefit**, never the headline (at low eval
+competing thesis. **Cost is a secondary benefit**, never the headline: at low eval
 volume a hosted judge can be cheaper than idle GPUs, so cost alone does not justify
-the sovereign build).
+the sovereign build.
 
 **Product shape - one codebase, two topologies.** A single codebase and one rubric
 are deployed in two topologies: a **hybrid** topology for buyers without a hard
@@ -61,9 +61,9 @@ the product. The downstream tier choice and sequencing are fixed in ADR-0006.
 - **Positive.** The thesis is decided, so adapter and local-model work (M5/M6) has
   a single north star. Reach and sovereignty stop competing: the seam serves both
   topologies from one codebase. The moat is the control catalogue plus *sovereign
-  reproducibility of governance verdicts* - a position hosted-only tooling cannot
-  occupy, and one the EU AI Act high-risk deadline (2 December 2027, Reg (EU)
-  2026/1744) makes more valuable over time.
+  reproducibility of governance verdicts*. Hosted-only tooling cannot occupy that
+  position, and the EU AI Act high-risk deadline (2 December 2027, Reg (EU)
+  2026/1744) makes it more valuable over time.
 - **Commitment / trade-off.** Naming sovereignty primary puts **LL-04 (local-judge
   calibration) on the critical path** and means **GPU capex must be within
   appetite**. There is no cheap version: sovereignty, not cost, is the

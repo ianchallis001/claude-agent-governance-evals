@@ -2,27 +2,28 @@
 
 ## What cage is for
 
-Two questions sit under any attempt to govern an AI agent: is it governed to the
-standard the organisation deploying it must meet, and can you trust the assessment
-enough to act on it?
+In plain terms: when an organisation lets an AI agent take actions on its own, regulators and
+internal risk teams expect evidence that the agent is actually supervised. `cage` is a command-line
+tool. It reads what an agent is allowed to do, works out how risky that is, and produces a report
+that ties each judgement to the specific rule it has to meet. It then checks that the report itself
+can be trusted before anyone relies on it. It is for the engineers and the risk or compliance teams
+who have to make that case, and it runs on your own machine, with no account and no internet
+connection.
 
-For a regulated firm, this is the whole point. A `cage` run does not just produce a
-score - it produces a **control-mapped assessment**: every judgement is tied to a
-named clause in the standard the firm answers to (the EU AI Act, ISO/IEC 42001, the
-PRA's SS1/23 or the US SR 11-7), scoped to the jurisdictions that actually apply
-(UK, EU, US). That is what a model-risk or compliance function actually needs - a
-control map it can act on, not a number it then has to translate into controls.
+A `cage` run produces a **control-mapped assessment**: every judgement is tied to a
+named clause in the AI and model-risk standards the firm answers to (the EU AI Act, ISO/IEC 42001,
+the PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
+(UK, EU, US).
 
-`cage` produces it by reading the agent's list of tools: it works out how much
+`cage` produces it by reading the agent's list of tools. It works out how much
 autonomy the agent has (`L0..L5`) and how much damage it could do (`BR1..BR5`),
 sets the governance intensity that combination demands, and attaches the controls
-that come with it - scoped by jurisdiction or by named framework, so the run cites
-the clauses in force for that deployment.
+that come with it. Those controls are scoped by jurisdiction or by named framework,
+so the run cites the clauses in force for that deployment.
 
-The second question is the harder one, and the reason the project exists. An
-assessment is only worth acting on if the thing that produced it has been checked.
-So wherever `cage` relies on an LLM judge, it will not let that judge decide
-anything until it has been measured against human labels. It:
+The harder part is trusting the assessment. Wherever `cage` relies on an LLM judge,
+it will not let that judge decide anything until it has been measured against human
+labels. It:
 
 - scores each judge against human labels with **Cohen's kappa**, not raw accuracy
 - withholds a verdict when the result sits inside the judge's own noise
@@ -30,25 +31,26 @@ anything until it has been measured against human labels. It:
   cancel
 - fails the whole run if the model version has moved underneath it
 
-That combination is the gap it fills. Eval frameworks run the tests but usually
-trust the judge and average the scores, so a single safety failure can be
-outvoted. Governance platforms map models to regulations, but at the level of
-policy and documentation, not an executable check you can run against an actual
-agent. `cage` does both at once, and runs fully offline - a `git clone` takes you
-to a full scorecard with control citations, no API key and no network.
+`cage` runs fully offline. A `git clone` takes you to a full scorecard with control
+citations, no API key and no network.
 
-> **Status (honest).** The harness, the CLI, the datasets (`data/golden.json`,
+> **Status.** The harness, the CLI, the datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are all built and tested: 440 tests,
 > all offline, including strict-mode manifest validation with a pinpointing error
 > taxonomy, a malformed-manifest fixture suite, and the collector assessment layer
 > (evidence anchoring, drift and reproducibility gates). [SPEC.md](SPEC.md) is the
-> full contract. What is still open - the path from a reference harness to a
-> defensible evaluation - is tracked openly as
+> full contract. What is still open is tracked as
 > [GitHub issues and milestones](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
 > and summarised under [What's next](#whats-next) below. This is an
-> **offline-tested reference harness, not a shipped product** - the limits section
-> near the end is deliberate, and worth reading before you quote any number from
-> here.
+> **offline-tested reference harness, not a shipped product**. Please read the limits
+> section near the end before you quote any number from here.
+
+**A few terms.** *Control* - a specific safeguard a regulation or standard requires (for example a
+human stop button). *Manifest* - the agent's declared list of tools and what each one can do.
+*LLM judge* - a second AI model used to grade the first; `cage` only trusts it after measuring it
+against human decisions. *Cohen's kappa* - an agreement score that discounts what chance alone would produce, so a judge that passes everything scores zero. *Governance intensity* - how much
+oversight an agent needs, graded LOW / MODERATE / HIGH / CRITICAL. *Human-in-the-loop (HITL)* - a
+person who must approve, or can override, what the agent does.
 
 ---
 
@@ -106,11 +108,11 @@ real-time human stop) and PRA SS1/23 Principle 5. Scope it to one region - say
 
 ## Comparing models
 
-`cage compare` runs the **identical** evaluation - the same golden dataset, the
-same seven scorers, the same gate - across a set of candidate agent models, and
-lays the per-dimension scores out as a matrix: one row per dimension (plus the
-overall gate), one column per model, and a trailing **delta** column showing
-where the models diverge.
+`cage compare` runs the **identical** evaluation across a set of candidate agent
+models: the same golden dataset, the same seven scorers, the same gate. It lays the
+per-dimension scores out as a matrix - one row per dimension (plus the overall
+gate), one column per model, and a trailing **delta** column showing where the
+models diverge.
 
 ```bash
 cage compare --mock                                  # the current-generation set
@@ -151,9 +153,9 @@ claude-opus-5-5  (mock)  gate PASS  exit 0
 
 Offline (`--mock`), the deterministic safety gates (dangerous-miss, HITL,
 manifest-integrity, drift) are identical across models, and the quality rows vary
-by a fixed, reproducible per-model perturbation - clearly labelled `(mock)`, a
-harness fixture, never a claim about any model's real quality. **Live** mode
-(behind `ANTHROPIC_API_KEY`) drives each candidate model live.
+by a fixed, reproducible per-model perturbation. That perturbation is clearly
+labelled `(mock)`: a harness fixture, never a claim about any model's real quality.
+**Live** mode (behind `ANTHROPIC_API_KEY`) drives each candidate model live.
 
 **Exit code.** `cage compare` exits `0` when every compared model PASSes. It goes
 non-zero exactly when a selected model **falls below `--threshold`** (the runner
@@ -287,8 +289,8 @@ shown to satisfy.
 
 `GLOBAL` (ISO/IEC 42001) is a baseline that is always included under a regional
 selection. UK GDPR deliberately mirrors EU GDPR's article numbering (same Art. 5,
-22, 25, 32, 35); the divergence that matters for a *data-residency* control is the
-international-transfer route - EU GDPR Chapter V relies on adequacy and the EU
+22, 25, 32, 35). The divergence that matters for a *data-residency* control is the
+international-transfer route: EU GDPR Chapter V relies on adequacy and the EU
 SCCs, UK GDPR on the ICO's IDTA / UK Addendum.
 
 ### Select by region
@@ -359,8 +361,12 @@ no MCP dependency at all
 ### Running it
 
 ```bash
-pip install -e .[mcp]          # installs mcp[cli] >= 2.0 (MCPServer API)
-python -m cage.mcp_server      # serve over stdio; blocks until the client disconnects
+pip install "claude-agent-governance-evals[mcp]"   # from PyPI (installs mcp[cli] >= 2.0)
+cage-mcp                                            # serve over stdio; blocks until the client disconnects
+
+# or from a source checkout:
+pip install -e .[mcp]
+python -m cage.mcp_server
 ```
 
 The server talks over the **stdio transport**: stdout is the JSON-RPC channel and
@@ -371,10 +377,19 @@ it into an MCP-aware client, point the client at that command - for example:
 ```json
 {
   "mcpServers": {
-    "cage-governance": { "command": "python", "args": ["-m", "cage.mcp_server"] }
+    "cage-governance": { "command": "cage-mcp" }
   }
 }
 ```
+
+### Publishing & identity
+
+The MCP server's registry identity is `io.github.ianchallis001/cage-governance-classifier`
+(PyPI package `claude-agent-governance-evals`). The Official MCP Registry verifies ownership
+against the string below appearing in the PyPI description. Publication itself is tracked under
+milestone *M7 - MCP server publication* and is a deliberate, maintained step - not yet live:
+
+mcp-name: io.github.ianchallis001/cage-governance-classifier
 
 Every tool call runs the **pure-stdlib deterministic classifier**
 (`cage.classify.classify_manifest`), so the server needs no Anthropic client, no
@@ -443,7 +458,7 @@ deliberate, and it is written up in
 - **Classification and judgement are the right shape for a server.** "What is this
   agent's autonomy and blast radius, what governance intensity does that resolve
   to, and which controls attach?" is a question with an answer - a
-  request/response capability other agents call, which is exactly what MCP is for.
+  request/response capability other agents call, which is what MCP is for.
   It also has to be free to answer **unknown / abstain** (SPEC section 8) rather
   than be forced into a yes/no on the hot path. So the classifier sits behind MCP
   and enforcement does not: the classifier can abstain, while enforcement must be
@@ -477,7 +492,7 @@ protocol-level check that did run.
 ## Inspect AI
 
 [Inspect](https://inspect.aisi.org.uk/) is the UK AI Safety Institute's
-evaluation framework and the reference others are measured against. The harness
+evaluation framework. The harness
 has had its Task = Dataset + Solver + Scorer shape from the start;
 `cage.inspect_adapter` runs the same governance eval on Inspect's own runtime,
 logged to Inspect's log viewer and orchestrated by `eval_set` if you want it.
@@ -590,7 +605,7 @@ The harness turns that into policy (SPEC section 8, `cage.evals.calibration`):
 PRA Supervisory Statement SS1/23 (model risk management for UK banks) treats a
 material model change as a trigger to **re-validate before you keep using it**,
 and expects **ongoing monitoring** across the model's life - the same spine as
-US SR 11-7 Sec. VII. `cage` implements that control as a drift gate, not a slogan:
+US SR 11-7 Sec. VII. `cage` implements that control as a drift gate:
 
 - **Change management = the drift gate (Principle 2.4).** `cage.models` pins the
   agent model, the judge model and the `anthropic-version` header, and
@@ -613,8 +628,7 @@ US SR 11-7 Sec. VII. `cage` implements that control as a drift gate, not a sloga
   effective-challenge, and it is itself calibrated before it's trusted to gate.
 - **Accountable owner / risk mitigants (Principle 3 / 5).** As intensity climbs to
   HIGH and CRITICAL, `controls_for_intensity()` attaches the SS1/23 governance,
-  validation and senior-oversight rows to the scorecard, so the output is a control
-  map a model-risk function can act on, not just a score.
+  validation and senior-oversight rows to the scorecard.
 
 A validation cycle, concretely: pin the fingerprint, run `cage eval`, read the
 per-dimension scorecard, and treat a drift BLOCK as the re-validation event it's
@@ -653,7 +667,7 @@ The harness is built to apply the principles in that article. Where it follows t
 - **Reproducibility and cost control.** A stdlib-only runtime, a fully offline
   mock path, pinned versions, and a `--max-cost-usd` budget guard.
 
-Where it deliberately doesn't meet the bar yet: single-annotator labels (no
+Where it doesn't meet the bar yet: single-annotator labels (no
 measured human-to-human kappa ceiling) and small N. Both are spelled out below.
 
 ---
@@ -704,9 +718,9 @@ steps to get from here to a defensible evaluation set.
 ## What's next
 
 This is a reference harness, not a finished benchmark. The limits above are the
-honest gaps, and the plan to close them is tracked openly as
-[GitHub milestones and issues](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
-not buried in a file. Each milestone maps to a specific limit:
+gaps, and the plan to close them is tracked as
+[GitHub milestones and issues](https://github.com/ianchallis001/claude-agent-governance-evals/milestones).
+Each milestone maps to a specific limit:
 
 - **[M1 - A defensible evaluation set](https://github.com/ianchallis001/claude-agent-governance-evals/milestone/1)**
   - a second annotator and a measured human-to-human kappa ceiling,
@@ -748,7 +762,7 @@ docs/adr/            # architecture decision records (ADR-0001..0003)
 examples/            # sample manifests for `cage classify`
 SPEC.md              # authoritative contract
 BOARD.md             # phase history (live tracking is on GitHub issues + milestones)
-DATASET.md           # dataset provenance, weighting, and honest limits
+DATASET.md           # dataset provenance, weighting and limits
 ```
 
 The design decisions are written up as ADRs under [`docs/adr/`](docs/adr/):
@@ -757,5 +771,4 @@ gateway (ADR-0002), and the single-author DoD adaptation (ADR-0003).
 
 ---
 
-_Author: Ian Challis. Offline reference harness - read the limits section before
-citing any number from it._
+_Author: Ian Challis._
