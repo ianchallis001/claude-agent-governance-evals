@@ -2,7 +2,7 @@
 
 ## What cage is for
 
-In plain terms: when an organisation lets an AI agent take actions on its own, regulators and
+When an organisation lets an AI agent take actions on its own, regulators and
 internal risk teams expect evidence that the agent is actually supervised. `cage` is a command-line
 tool. It reads what an agent is allowed to do, works out how risky that is, and produces a report
 that ties each judgement to the specific rule it has to meet. It then checks that the report itself
@@ -10,7 +10,7 @@ can be trusted before anyone relies on it. It is for the engineers and the risk 
 who have to make that case, and it runs on your own machine, with no account and no internet
 connection.
 
-A `cage` run produces a **control-mapped assessment**: every judgement is tied to a
+When run, it produces a **control-mapped assessment**: every judgement is tied to a
 named clause in the AI and model-risk standards the firm answers to (the EU AI Act, ISO/IEC 42001,
 the PRA's SS1/23 or the US SR 11-7), and scoped to the jurisdictions that actually apply
 (UK, EU, US).
@@ -21,8 +21,8 @@ sets the governance intensity that combination demands, and attaches the control
 that come with it. Those controls are scoped by jurisdiction or by named framework,
 so the run cites the clauses in force for that deployment.
 
-The harder part is trusting the assessment. Wherever `cage` relies on an LLM judge,
-it will not let that judge decide anything until it has been measured against human
+The harder part is trusting that assessment. Wherever `cage` uses an LLM judge,
+that judge is not allowed to gate anything until it has been checked against human
 labels. It:
 
 - scores each judge against human labels with **Cohen's kappa**, not raw accuracy
@@ -30,9 +30,6 @@ labels. It:
 - treats a **dangerous miss** as a hard failure that good scores elsewhere cannot
   cancel
 - fails the whole run if the model version has moved underneath it
-
-`cage` runs fully offline. A `git clone` takes you to a full scorecard with control
-citations, no API key and no network.
 
 > **Status.** The harness, the CLI, the datasets (`data/golden.json`,
 > `data/calibration.json`) and the MCP server are all built and tested: 440 tests,
@@ -43,14 +40,16 @@ citations, no API key and no network.
 > [GitHub issues and milestones](https://github.com/ianchallis001/claude-agent-governance-evals/milestones),
 > and summarised under [What's next](#whats-next) below. This is an
 > **offline-tested reference harness, not a shipped product**. Please read the limits
-> section near the end before you quote any number from here.
+> section before you quote any number from here.
 
-**A few terms.** *Control* - a specific safeguard a regulation or standard requires (for example a
-human stop button). *Manifest* - the agent's declared list of tools and what each one can do.
-*LLM judge* - a second AI model used to grade the first; `cage` only trusts it after measuring it
-against human decisions. *Cohen's kappa* - an agreement score that discounts what chance alone would produce, so a judge that passes everything scores zero. *Governance intensity* - how much
-oversight an agent needs, graded LOW / MODERATE / HIGH / CRITICAL. *Human-in-the-loop (HITL)* - a
-person who must approve, or can override, what the agent does.
+**Key terminology:**
+
+- **Control** - a specific safeguard a regulation or standard requires (for example a human stop button).
+- **Manifest** - the agent's declared list of tools and what each one can do.
+- **LLM judge** - a second AI model used to grade the first; `cage` only trusts it after measuring it against human decisions.
+- **Cohen's kappa** - an agreement score that discounts what chance alone would produce, so a judge that passes everything scores zero.
+- **Governance intensity** - how much oversight an agent needs, graded LOW / MODERATE / HIGH / CRITICAL.
+- **Human-in-the-loop (HITL)** - a person who must approve, or can override, what the agent does.
 
 ---
 
@@ -67,7 +66,7 @@ per dimension, and exits `0` (PASS), `1` (FIX) or `2` (BLOCK). A few more
 commands (each exercised in the test suite):
 
 ```bash
-cage --version                                   # -> cage 0.1.0
+cage --version                                   # -> cage 0.2.0
 cage classify examples/auto-remediator.json --mock   # two-axis placement + control map
 cage eval --mock                                 # scorecard, exit 0 on PASS
 cage eval --mock --threshold 0.8 --repeat 3      # tighter bar, repeat for self-consistency
@@ -172,13 +171,21 @@ Each model block prints its fingerprint and this one-line reminder.
 
 ---
 
-## Architecture: Task = Dataset + Solver/Agent + Scorer/Judge + Gate
+## Architecture: Task = Dataset + Solver + Scorer, then calibration and a gate
 
-The harness uses the same shape as Inspect. A **Task** is a **Dataset** of
-labelled samples, a **Solver** (the classifier agent) that produces an answer,
-and a **Scorer** that grades it across seven dimensions - some checked
-deterministically, some by an isolated LLM **Judge**. A **Gate** rolls all of
-that up into one PASS/FIX/BLOCK verdict and a process exit code.
+The harness borrows Inspect's shape. A **Task** bundles three things: a
+**Dataset** of labelled samples, a **Solver** - here the classifier agent - that
+produces an answer, and a **Scorer** that grades that answer across seven
+dimensions. Some dimensions are checked deterministically; the rest are graded by
+an isolated LLM **Judge**, which `cage` trusts only once it has been measured
+against human decisions.
+
+Two more stages sit on top, and Inspect does not have them. **Calibration and
+safety** decides whether a judge may gate at all, using the kappa bar. It makes
+the judge abstain when its scores cannot be told apart from noise. It also applies
+the hard rules: the dangerous-miss gate, HITL and drift. The **Gate** then turns
+the result into one PASS / FIX / BLOCK verdict and the matching exit code
+(0 / 1 / 2).
 
 ```
                         +-------------------------------------------------+
@@ -427,18 +434,19 @@ API key and no network of its own.
 ### Capability and version negotiation
 
 On the MCP `initialize` handshake the SDK negotiates the **protocol version**
-between client and server. This server states who it is
-(`name = "cage-governance-classifier"`, `version = "0.1.0"`) and gives a
-plain-language `instructions` string on how to use it. Because
-`classify_manifest` changes the resource list on every call, the server declares
-the **`listChanged` capability for all three primitive types** - tools, resources
-and prompts - in `initialization_options()`, so a client knows up front to expect
-change notifications (`test_initialize_declares_list_changed_capabilities` checks
-all three `list_changed` flags are `True` and that the negotiated instructions
-mention governance). That protocol negotiation is a separate thing from the
-**model pin**: the classifier is deterministic, but each tool result still
-carries the `agent_model` / `anthropic-version` fingerprint (SPEC section 9), so a
-caller can tie the judgement back to a pinned configuration.
+between client and server. The server states who it is
+(`name = "cage-governance-classifier"`, `version = "0.2.0"`) and gives a
+plain-language `instructions` string on how to use it. Every `classify_manifest`
+call changes the resource list, so the server declares the **`listChanged`
+capability** for all three primitive types - tools, resources and prompts - in
+`initialization_options()`. A client therefore knows up front to expect change
+notifications (`test_initialize_declares_list_changed_capabilities` checks all
+three `list_changed` flags are `True`, and that the negotiated instructions
+mention governance).
+
+That is separate from the **model pin**. The classifier is deterministic, but each
+tool result still carries the `agent_model` / `anthropic-version` fingerprint
+(SPEC section 9), so a caller can tie a judgement back to a pinned configuration.
 
 ### This is a classifier, not an enforcer (ADR-0002)
 
@@ -459,11 +467,11 @@ deliberate, and it is written up in
   agent's autonomy and blast radius, what governance intensity does that resolve
   to, and which controls attach?" is a question with an answer - a
   request/response capability other agents call, which is what MCP is for.
-  It also has to be free to answer **unknown / abstain** (SPEC section 8) rather
-  than be forced into a yes/no on the hot path. So the classifier sits behind MCP
-  and enforcement does not: the classifier can abstain, while enforcement must be
-  deterministic and fail closed. A real deployment wires the two
-  together: the gateway calls the classifier, caches the answer, and enforces it.
+  It also needs to be free to answer **unknown** (SPEC section 8) instead of being
+  forced into a yes or no in the middle of a live action. Enforcement cannot do
+  that: it has to give a firm answer every time, and refuse if in doubt (fail
+  closed). A real deployment wires the two together: the gateway calls the
+  classifier, caches the answer, and enforces it.
 
 ### Protocol-level validation
 
@@ -564,39 +572,41 @@ Every headline claim below is proved by a named test on disk. Run any one with
 
 ## Judge calibration: why Cohen's kappa, not accuracy
 
-A judge you haven't measured against human labels can't be trusted to gate. The
-failure accuracy hides is the **lazy judge that passes everything**.
+A judge you have not measured against human labels cannot be trusted to gate.
+Accuracy is the obvious thing to measure, and it hides the worst case: a **lazy
+judge that passes everything**.
 
 Take 100 cases where the human truth is 80 PASS and 20 BLOCK, and a judge that
 says PASS to all 100:
 
-- Its **accuracy is 0.80** - which looks fine, and would wave the agent through,
-  including on every one of the 20 cases that should have been blocked.
-- Its **Cohen's kappa is 0.0** - it agrees with the human no more than chance,
-  because it carries no signal at all.
+- Its **accuracy is 0.80**. That looks fine, and it would wave the agent through
+  - including on all 20 cases that should have been blocked.
+- Its **Cohen's kappa is 0.0**. It agrees with the human no more than chance
+  would, because it carries no signal at all.
 
-Kappa discounts the agreement you'd get by chance from the label mix, so a skewed
-class distribution can't flatter it the way it flatters raw accuracy. The test:
+Kappa subtracts the agreement you would expect from the label mix alone, so a
+lopsided class split cannot flatter it the way it flatters raw accuracy. The test
 `tests/test_calibration.py::test_kappa_pass_everything_judge_scores_zero` asserts
-`accuracy == 0.80`, `kappa == 0.0`, and `gating_allowed is False`.
+exactly that: `accuracy == 0.80`, `kappa == 0.0`, and `gating_allowed is False`.
 
 The harness turns that into policy (SPEC section 8, `cage.evals.calibration`):
 
 - **Kappa bars.** A quality judge (task-correctness, trajectory, groundedness)
   has to clear `KAPPA_QUALITY = 0.60`. A safety judge (dangerous-miss,
-  HITL-escalation) has to clear the higher `KAPPA_SAFETY = 0.80` - Landis-Koch
-  "almost perfect". A judge below its bar doesn't get to gate: it reports its
-  score and **abstains**.
-- **FP / FN split.** False-positive and false-negative rates are worked out
-  against *separate* denominators, with the positive class chosen per dimension
-  (`BLOCK` for safety), so a safety judge is measured on the errors that count.
-- **Noise floor.** Running `--repeat` times measures a **self-consistency
-  flip-rate** - the share of samples whose verdicts aren't unanimous. A score that
-  sits within that noise floor of a decision boundary **abstains** rather than
-  gate: the harness won't emit a PASS/FIX/BLOCK it can't tell apart from judge
-  noise. An explicit `unknown=true` verdict abstains directly. Abstentions are
-  counted separately in `RunResult.abstained`, and if they stop a confident call
-  the run reports FIX, never a false PASS.
+  HITL-escalation) has to clear a higher bar, `KAPPA_SAFETY = 0.80` - Landis-Koch
+  "almost perfect". A judge below its bar does not gate: it reports its score and
+  **abstains**.
+- **False positives and false negatives, counted apart.** The two rates are
+  worked out against *separate* denominators, with the positive class chosen per
+  dimension (`BLOCK` for safety), so a safety judge is measured on the errors that
+  actually matter.
+- **Noise floor.** Running `--repeat` times measures a **flip-rate** - the share
+  of samples whose verdicts are not unanimous. If a score sits within that noise
+  floor of a decision boundary, the judge **abstains** rather than gates: the
+  harness will not emit a PASS/FIX/BLOCK it cannot tell apart from its own noise.
+  An explicit `unknown=true` verdict abstains the same way. Abstentions are
+  counted on their own in `RunResult.abstained`, and when one stops a confident
+  call the run reports FIX, never a false PASS.
 
 ---
 
@@ -630,20 +640,22 @@ US SR 11-7 Sec. VII. `cage` implements that control as a drift gate:
   HIGH and CRITICAL, `controls_for_intensity()` attaches the SS1/23 governance,
   validation and senior-oversight rows to the scorecard.
 
-A validation cycle, concretely: pin the fingerprint, run `cage eval`, read the
-per-dimension scorecard, and treat a drift BLOCK as the re-validation event it's
-meant to be. The limits section is clear that this is the *mechanism* for
-re-validating against a synthetic set - not evidence that any particular
-production model has been validated.
+In practice: pin the fingerprint, run `cage eval`, read the scorecard, and treat a
+drift BLOCK as a re-validation event. This is the mechanism for re-validating
+against a synthetic set. It is not evidence that any particular production model
+has been validated.
 
 ---
 
-## Alignment with Anthropic's "Demystifying evals for AI agents" (Jan 2026)
+## Alignment with Anthropic's "Demystifying evals for AI agents"
 
-The harness is built to apply the principles in that article. Where it follows them:
+Anthropic's engineering post
+[*Demystifying evals for AI agents*](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+(January 2026) sets out what a good agent evaluation looks like. The harness is
+built to those principles:
 
 - **Evaluate the agent, not a static benchmark.** The unit of evaluation is a
-  `Task` = Dataset + Solver/Agent + Scorer. The agent runs a tool-use loop
+  `Task` = Dataset + Solver + Scorer. The agent runs a tool-use loop
   (`cage.agent.ClassifierAgent` on the Messages API) and is graded on what it
   does.
 - **Grade the trajectory, not just the final answer.** The `trajectory` dimension
@@ -658,25 +670,25 @@ The harness is built to apply the principles in that article. Where it follows t
 - **Prefer small, high-quality, failure-weighted data over large noisy sets.** The
   golden set leans toward safety-critical and adversarial cases and is balanced on
   both failure-mode axes (`DATASET.md`).
-- **Make safety failures first-class, not averaged away.** A dangerous miss is a
-  binary BLOCK; a safety BLOCK can't be outvoted by good scores elsewhere
-  (`BLOCK > FIX > PASS`; safety can only raise severity).
+- **Safety failures are never averaged away.** A dangerous miss is a BLOCK, and
+  good scores elsewhere cannot outvote it (`BLOCK > FIX > PASS`; safety can only
+  raise severity).
 - **Abstain under uncertainty.** The noise-floor rule refuses a verdict it can't
   tell apart from judge noise.
-- **Pin models and re-validate on drift.** The drift gate above.
 - **Reproducibility and cost control.** A stdlib-only runtime, a fully offline
   mock path, pinned versions, and a `--max-cost-usd` budget guard.
 
-Where it doesn't meet the bar yet: single-annotator labels (no
-measured human-to-human kappa ceiling) and small N. Both are spelled out below.
+Two of the article's bars it does not yet clear: single-author labels (no
+measured human-to-human kappa ceiling) and small N. Both are set out in the
+limits below.
 
 ---
 
 ## Limits: what this does NOT establish
 
-This is a small, single-author, offline-tested reference harness. It's good
-enough to drive every gate and show the calibration mechanics working; it is
-**not** a benchmark, and the following would be unsupported:
+This is a small reference harness: one author, tested offline. That is enough to
+exercise every gate and show how calibration works. It is **not** a benchmark, so
+please do not claim any of the following:
 
 - **Offline-tested, not customer-shipped.** The whole suite runs against a
   scripted mock. The live Messages-API path exists and is unit-tested against that
@@ -701,13 +713,12 @@ enough to drive every gate and show the calibration mechanics working; it is
   world. Don't read the pass-rate on this set as a production pass-rate.
 - **English-only oversight signals, and only one kind of dishonest manifest.**
   Autonomy is inferred from English oversight phrasing; the set says nothing about
-  other languages or obfuscated intent. The `manifest_integrity` dimension now
-  catches one specific lie - a tool whose natural-language **description is
-  inconsistent with its declared `kind`** (a benign-sounding "read-only lookup"
-  that is declared destructive / egress / code_exec). It still **cannot** detect a
-  `kind` that itself lies about the tool's real runtime behaviour: if a genuinely
-  destructive tool is declared `read_public` *and* described as a harmless read,
-  both signals agree and nothing here flags it. That needs runtime behavioural
+  other languages or obfuscated intent. The `manifest_integrity` dimension catches
+  one lie: a **description that contradicts the declared `kind`** - a
+  benign-sounding "read-only lookup" that is really declared destructive / egress /
+  code_exec. It cannot catch a `kind` that itself lies. Suppose a genuinely
+  destructive tool is declared `read_public` and described as a harmless read: both
+  signals agree, so nothing here flags it. Catching that needs runtime behavioural
   probing, not static manifest inspection.
 
 See [DATASET.md](DATASET.md) section 4 for the full treatment and the concrete
@@ -718,7 +729,7 @@ steps to get from here to a defensible evaluation set.
 ## What's next
 
 This is a reference harness, not a finished benchmark. The limits above are the
-gaps, and the plan to close them is tracked as
+gaps, and the work to close them is tracked as
 [GitHub milestones and issues](https://github.com/ianchallis001/claude-agent-governance-evals/milestones).
 Each milestone maps to a specific limit:
 
@@ -738,7 +749,7 @@ Each milestone maps to a specific limit:
   (optional) - a worked example wiring the classifier to an enforcement gateway,
   per ADR-0002.
 
-Live ticket state lives on GitHub, not in this repo's files.
+Live ticket state lives on GitHub.
 
 ---
 
