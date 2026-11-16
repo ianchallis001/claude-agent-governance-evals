@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--threshold", type=float, default=0.7,
                        help="gate threshold in [0,1] (default: 0.7)")
         p.add_argument("--max-cost-usd", type=float, default=None,
-                       help="abort if estimated spend exceeds this budget")
+                       help="abort once measured spend would exceed this budget (USD)")
         p.add_argument("--repeat", type=int, default=1,
                        help="self-consistency repeats per sample (default: 1)")
         p.add_argument("--jurisdictions", "--regions", dest="jurisdictions",

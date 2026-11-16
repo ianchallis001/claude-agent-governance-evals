@@ -27,7 +27,7 @@ from cage.classify import (
     intensity_for,
 )
 from cage.manifest import AgentManifest
-from cage.models import AGENT_MODEL
+from cage.models import AGENT_MODEL, accrue_usage
 
 # Response ceiling for a classification turn; a classification is small, so this
 # is generous. The mock ignores it; a live client enforces it.
@@ -138,6 +138,10 @@ class ClassifierAgent:
         # {"tool": name, "input": {...}, "id": id}. Reset at the start of every
         # classify() call so a reused agent never leaks a prior run's trajectory.
         self.last_trajectory: list[dict[str, Any]] = []
+        # Token usage of the most recent classify() run, summed across every turn
+        # of the tool-use loop. The runner prices this against the agent model to
+        # make --max-cost-usd bite on real spend. Reset per classify() call.
+        self.last_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
 
     @property
     def client(self) -> Any:
@@ -159,6 +163,7 @@ class ClassifierAgent:
             raise ValueError("max_turns must be at least 1")
 
         self.last_trajectory = []
+        self.last_usage = {"input_tokens": 0, "output_tokens": 0}
         by_name = {t.name: t for t in manifest.tools}
         messages: list[dict[str, Any]] = [
             {"role": "user", "content": self._user_prompt(manifest)}
@@ -172,6 +177,7 @@ class ClassifierAgent:
                 tools=_TOOLS,
                 messages=messages,
             )
+            accrue_usage(self.last_usage, response)
 
             tool_uses = [
                 b for b in response.content if getattr(b, "type", None) == "tool_use"

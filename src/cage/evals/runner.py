@@ -30,7 +30,7 @@ from cage.evals.calibration import audit_judge, self_consistency_flip_rate, with
 from cage.evals.judge import DimensionJudge, VerdictLabel
 from cage.evals.scorer import Score
 from cage.manifest import AgentManifest
-from cage.models import AGENT_MODEL, ANTHROPIC_VERSION, JUDGE_MODEL
+from cage.models import AGENT_MODEL, ANTHROPIC_VERSION, JUDGE_MODEL, cost_usd_for
 from cage.regmap import Dimension, controls_for_dimension
 
 # Dimension groupings the gate logic reasons over. manifest_integrity is a
@@ -180,35 +180,33 @@ def build_scorecard(
     return card
 
 
-def _solve_and_score(task: Any, noise_floor: float, repeat: int) -> tuple[
-    list[tuple[str, list[Score]]], dict[Dimension, float]
-]:
-    """Solve + score every sample; measure per-dimension noise floor over repeats."""
-    per_sample: list[tuple[str, list[Score]]] = []
-    # verdict lists per dimension per sample, across repeats, for the flip rate.
-    repeats_by_dim: dict[Dimension, list[list[str]]] = {d: [] for d in Dimension}
+def _sample_cost_usd(
+    output: Any, scores: list[Score], agent_model: str, judge_model: str
+) -> float:
+    """Measured USD cost of one sample-solve.
 
-    for sample in task.dataset:
-        runs: list[list[Score]] = []
-        for _ in range(max(1, repeat)):
-            output = task.solver(sample)
-            scores = list(task.scorer(sample, output))
-            runs.append(scores)
-        # Authoritative scores are the first repeat.
-        per_sample.append((sample.id, runs[0]))
-        # Collect verdicts per dimension across repeats for this sample.
-        for dim in Dimension:
-            verdicts = [
-                next(sc.verdict.value for sc in run if sc.dimension is dim)
-                for run in runs
-            ]
-            repeats_by_dim[dim].append(verdicts)
-
-    measured_floor = {
-        dim: max(noise_floor, self_consistency_flip_rate(v))
-        for dim, v in repeats_by_dim.items()
-    }
-    return per_sample, measured_floor
+    Agent tokens (:attr:`AgentOutput.usage`) priced at ``agent_model`` plus every
+    judge call's tokens (each score's ``detail["judge_usage"]``) priced at
+    ``judge_model``. Absent usage - an offline mock that reports none - prices to
+    zero, so the offline suites still report ``$0.00`` while a live run accrues
+    real spend. This reads measured counts only; it makes no network call.
+    """
+    agent_usage = getattr(output, "usage", None) or {}
+    cost = cost_usd_for(
+        agent_model,
+        agent_usage.get("input_tokens", 0),
+        agent_usage.get("output_tokens", 0),
+    )
+    for sc in scores:
+        detail = getattr(sc, "detail", None)
+        ju = detail.get("judge_usage") if isinstance(detail, dict) else None
+        if ju:
+            cost += cost_usd_for(
+                judge_model,
+                ju.get("input_tokens", 0),
+                ju.get("output_tokens", 0),
+            )
+    return cost
 
 
 def run_eval(
@@ -259,7 +257,7 @@ def run_eval(
             detail={**detail, "blocked_by": "model_drift"},
         )
 
-    # --- step 2: solve + score, honouring the budget guard ---------------------
+    # --- step 2: solve + score, measuring real cost and honouring the budget ---
     all_scores: list[Score] = []
     abstained_ids: list[str] = []
     abstained_dims: dict[str, list[str]] = {}
@@ -267,24 +265,58 @@ def run_eval(
     cost_usd = 0.0
     aborted = False
 
-    per_sample, measured_floor = (
-        _solve_and_score(task, noise_floor, repeat)
-        if (max_cost_usd is None or cost_per_sample == 0.0)
-        else ([], {d: noise_floor for d in Dimension})
-    )
+    # One sample loop that measures real token spend, repeats for the noise
+    # floor, and stops before a sample it projects to carry over the budget. Cost
+    # per solve is the measured agent+judge token cost (``cost_per_sample``, when
+    # > 0, overrides it with a flat a-priori estimate - the knob the budget tests
+    # and a dry-run estimate use).
+    per_sample: list[tuple[str, list[Score]]] = []
+    repeats_by_dim: dict[Dimension, list[list[str]]] = {d: [] for d in Dimension}
+    n_costed = 0  # solves priced so far, for the rolling-mean projection
 
-    if not per_sample:
-        # Budget-guarded path: solve one sample at a time so we can stop before
-        # the next call would breach the budget.
-        measured_floor = {d: noise_floor for d in Dimension}
-        for sample in task.dataset:
-            if max_cost_usd is not None and (cost_usd + cost_per_sample) > max_cost_usd:
+    for sample in task.dataset:
+        # Budget guard: once one solve has a measured cost, stop *before* a sample
+        # we project to carry over the cap. The first solve always runs (its cost
+        # is unknowable until the call is made); thereafter the rolling mean of
+        # real spend (or the flat override) projects the next one.
+        if max_cost_usd is not None and n_costed >= 1:
+            projected_next = cost_per_sample if cost_per_sample > 0 else (cost_usd / n_costed)
+            if cost_usd + projected_next > max_cost_usd:
                 aborted = True
                 break
+
+        runs: list[list[Score]] = []
+        for _ in range(max(1, repeat)):
             output = task.solver(sample)
             scores = list(task.scorer(sample, output))
-            cost_usd += cost_per_sample
-            per_sample.append((sample.id, scores))
+            runs.append(scores)
+            step = (
+                cost_per_sample if cost_per_sample > 0
+                else _sample_cost_usd(output, scores, agent_model, judge_model)
+            )
+            cost_usd += step
+            n_costed += 1
+            # Hard stop mid-repeat if a call has already carried us over the cap.
+            if max_cost_usd is not None and cost_usd > max_cost_usd:
+                aborted = True
+                break
+
+        # Authoritative scores are the first repeat.
+        per_sample.append((sample.id, runs[0]))
+        for dim in Dimension:
+            verdicts = [
+                next(sc.verdict.value for sc in run if sc.dimension is dim)
+                for run in runs
+            ]
+            repeats_by_dim[dim].append(verdicts)
+
+        if aborted:
+            break
+
+    measured_floor = {
+        dim: max(noise_floor, self_consistency_flip_rate(v))
+        for dim, v in repeats_by_dim.items()
+    }
 
     # --- step 3+4: abstain rule, safety gates, per-sample accounting -----------
     severity = _SEVERITY[VerdictLabel.PASS]

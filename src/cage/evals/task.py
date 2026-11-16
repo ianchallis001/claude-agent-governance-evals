@@ -98,12 +98,16 @@ class AgentOutput:
     classification: Classification
     trajectory: list[dict[str, Any]] = field(default_factory=list)
     manifest_dict: dict[str, Any] = field(default_factory=dict)
+    # Agent-side token usage for this sample (summed over the tool-use loop). The
+    # runner prices it against the agent model for the --max-cost-usd budget.
+    usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "classification": self.classification.to_dict(),
             "trajectory": list(self.trajectory),
             "manifest": self.manifest_dict,
+            "usage": dict(self.usage),
         }
 
 
@@ -158,6 +162,7 @@ def governance_task(
             classification=classification,
             trajectory=list(agent.last_trajectory),
             manifest_dict=manifest.to_dict(),
+            usage=dict(agent.last_usage),
         )
 
     def scorer(sample: Sample, output: Any) -> list[Any]:
